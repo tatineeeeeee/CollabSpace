@@ -8,7 +8,13 @@
  * @module
  */
 
+import type * as activities from "../activities.js";
+import type * as boards from "../boards.js";
+import type * as cards from "../cards.js";
+import type * as documents from "../documents.js";
 import type * as http from "../http.js";
+import type * as lib from "../lib.js";
+import type * as lists from "../lists.js";
 import type * as users from "../users.js";
 import type * as workspaces from "../workspaces.js";
 
@@ -19,7 +25,13 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  activities: typeof activities;
+  boards: typeof boards;
+  cards: typeof cards;
+  documents: typeof documents;
   http: typeof http;
+  lib: typeof lib;
+  lists: typeof lists;
   users: typeof users;
   workspaces: typeof workspaces;
 }>;

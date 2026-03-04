@@ -107,6 +107,7 @@ export default defineSchema({
       v.literal("document_created"),
       v.literal("document_updated"),
       v.literal("document_archived"),
+      v.literal("document_published"),
       v.literal("board_created"),
       v.literal("board_updated"),
       v.literal("card_created"),

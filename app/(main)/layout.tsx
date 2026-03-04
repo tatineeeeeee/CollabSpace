@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SearchCommand } from "@/components/shared/search-command";
 import { toast } from "sonner";
 
 export default function MainLayout({
@@ -145,6 +146,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
         </header>
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
+      <SearchCommand />
     </div>
   );
 }

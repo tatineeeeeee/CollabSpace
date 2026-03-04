@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "shadcn/tailwind.css";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -122,4 +123,14 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Tiptap placeholder */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--color-muted-foreground);
+  opacity: 0.5;
+  pointer-events: none;
+  height: 0;
 }

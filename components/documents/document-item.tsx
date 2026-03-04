@@ -1,0 +1,103 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { ChevronRight, FileText, MoreHorizontal, Plus, Trash } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
+import type { Id } from "@/convex/_generated/dataModel";
+
+interface DocumentItemProps {
+  id: Id<"documents">;
+  label: string;
+  icon?: string;
+  active?: boolean;
+  level?: number;
+  expanded?: boolean;
+  onExpand?: () => void;
+  onCreate?: () => void;
+  onArchive?: (e: React.MouseEvent) => void;
+}
+
+export function DocumentItem({
+  id,
+  label,
+  icon,
+  active,
+  level = 0,
+  expanded,
+  onExpand,
+  onCreate,
+  onArchive,
+}: DocumentItemProps) {
+  const router = useRouter();
+
+  const handleExpand = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onExpand?.();
+  };
+
+  const handleCreate = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onCreate?.();
+  };
+
+  return (
+    <div
+      onClick={() => router.push(`/documents/${id}`)}
+      role="button"
+      style={{ paddingLeft: `${level * 12 + 12}px` }}
+      className={cn(
+        "group flex min-h-[28px] w-full cursor-pointer items-center gap-1 rounded-sm py-1 pr-3 text-sm text-muted-foreground hover:bg-accent/50",
+        active && "bg-accent text-accent-foreground"
+      )}
+    >
+      <button
+        onClick={handleExpand}
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm hover:bg-accent"
+      >
+        <ChevronRight
+          className={cn(
+            "h-3.5 w-3.5 transition-transform duration-200",
+            expanded && "rotate-90"
+          )}
+        />
+      </button>
+
+      {icon ? (
+        <span className="mr-1 shrink-0 text-sm">{icon}</span>
+      ) : (
+        <FileText className="mr-1 h-4 w-4 shrink-0 text-muted-foreground" />
+      )}
+
+      <span className="truncate">{label}</span>
+
+      <div className="ml-auto flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+            <button className="flex h-5 w-5 items-center justify-center rounded-sm hover:bg-accent">
+              <MoreHorizontal className="h-3.5 w-3.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" side="right" forceMount>
+            <DropdownMenuItem onClick={onArchive}>
+              <Trash className="mr-2 h-4 w-4" />
+              Archive
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <button
+          onClick={handleCreate}
+          className="flex h-5 w-5 items-center justify-center rounded-sm hover:bg-accent"
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}

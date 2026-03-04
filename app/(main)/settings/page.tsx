@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useWorkspaceStore } from "@/hooks/use-workspace";
+import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,8 +17,55 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Monitor, Sun, Moon } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Id } from "@/convex/_generated/dataModel";
+
+const themeOptions = [
+  { value: "system", label: "System", icon: Monitor },
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+] as const;
+
+function AppearanceSection() {
+  const { theme, setTheme } = useTheme();
+
+  return (
+    <div className="rounded-lg border p-6">
+      <h2 className="mb-1 text-lg font-semibold">Appearance</h2>
+      <p className="mb-4 text-sm text-muted-foreground">
+        Customize how CollabSpace looks on your device.
+      </p>
+      <div className="flex flex-col gap-2">
+        <Label>Theme</Label>
+        <div className="grid grid-cols-3 gap-2">
+          {themeOptions.map((option) => {
+            const Icon = option.icon;
+            const isSelected = theme === option.value;
+            return (
+              <button
+                key={option.value}
+                onClick={() => setTheme(option.value)}
+                className={cn(
+                  "flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-colors",
+                  isSelected
+                    ? "border-primary bg-primary/5"
+                    : "border-transparent bg-muted/50 hover:bg-muted"
+                )}
+              >
+                <Icon className={cn("h-5 w-5", isSelected ? "text-primary" : "text-muted-foreground")} />
+                <span className={cn("text-sm font-medium", isSelected ? "text-primary" : "text-muted-foreground")}>
+                  {option.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const { activeWorkspaceId, setActiveWorkspaceId } = useWorkspaceStore();
@@ -132,6 +180,11 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+
+        <Separator />
+
+        {/* Appearance */}
+        <AppearanceSection />
 
         <Separator />
 
