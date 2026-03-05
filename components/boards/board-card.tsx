@@ -3,7 +3,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, GripVertical } from "lucide-react";
+import { Calendar, CheckSquare, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Doc } from "@/convex/_generated/dataModel";
 
@@ -43,11 +43,18 @@ export function BoardCard({ card, onClick, isDragOverlay }: BoardCardProps) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group flex items-start gap-1.5 rounded-md border bg-card p-2.5 shadow-sm transition-shadow hover:shadow-md",
+        "group flex flex-col rounded-md border bg-card shadow-sm transition-shadow hover:shadow-md",
         isDragging && "opacity-50",
         isDragOverlay && "rotate-2 shadow-lg"
       )}
     >
+      {card.coverColor && (
+        <div
+          className="h-2 w-full rounded-t-md"
+          style={{ backgroundColor: card.coverColor }}
+        />
+      )}
+      <div className="flex items-start gap-1.5 p-2.5">
       <button
         {...attributes}
         {...listeners}
@@ -59,7 +66,7 @@ export function BoardCard({ card, onClick, isDragOverlay }: BoardCardProps) {
       <div className="min-w-0 flex-1 cursor-pointer" onClick={onClick}>
         <p className="text-sm font-medium leading-snug">{card.title}</p>
 
-        {(card.labels?.length || formattedDueDate) && (
+        {(card.labels?.length || formattedDueDate || (card.checklistItems && card.checklistItems.length > 0)) && (
           <div className="mt-1.5 flex flex-wrap items-center gap-1">
             {card.labels?.map((label, i) => (
               <Badge
@@ -74,6 +81,13 @@ export function BoardCard({ card, onClick, isDragOverlay }: BoardCardProps) {
                 {label.name}
               </Badge>
             ))}
+            {card.checklistItems && card.checklistItems.length > 0 && (
+              <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                <CheckSquare className="h-3 w-3" />
+                {card.checklistItems.filter((i) => i.completed).length}/
+                {card.checklistItems.length}
+              </span>
+            )}
             {formattedDueDate && (
               <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                 <Calendar className="h-3 w-3" />
@@ -82,6 +96,7 @@ export function BoardCard({ card, onClick, isDragOverlay }: BoardCardProps) {
             )}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

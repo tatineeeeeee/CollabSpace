@@ -91,6 +91,16 @@ export default defineSchema({
     ),
     dueDate: v.optional(v.number()),
     assigneeId: v.optional(v.id("users")),
+    checklistItems: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          text: v.string(),
+          completed: v.boolean(),
+        })
+      )
+    ),
+    coverColor: v.optional(v.string()),
     isArchived: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),

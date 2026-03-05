@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
@@ -25,6 +25,8 @@ import {
 import { cn } from "@/lib/utils";
 import { EditorToolbar } from "./editor-toolbar";
 import { EditorFooter } from "./editor-footer";
+import { SlashCommand } from "./slash-command";
+import { Callout } from "./callout-extension";
 import type { Id } from "@/convex/_generated/dataModel";
 
 interface EditorProps {
@@ -68,7 +70,7 @@ export function Editor({
         heading: { levels: [1, 2, 3] },
       }),
       Placeholder.configure({
-        placeholder: "Start writing...",
+        placeholder: "Type '/' for commands...",
       }),
       TaskList,
       TaskItem.configure({ nested: true }),
@@ -79,6 +81,8 @@ export function Editor({
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Underline,
+      Callout,
+      SlashCommand,
     ],
     content: initialContent ? JSON.parse(initialContent) : undefined,
     editable,
@@ -98,7 +102,7 @@ export function Editor({
     },
   });
 
-  const saveContentRef = useRef(
+  const onSaveContent = useEffectEvent(
     (debounced: string, docId: Id<"documents">, initial: string | undefined) => {
       if (debounced && debounced !== initial) {
         setSaveStatus("saving");
@@ -115,7 +119,7 @@ export function Editor({
       return;
     }
 
-    saveContentRef.current(debouncedContent, documentId, initialContent);
+    onSaveContent(debouncedContent, documentId, initialContent);
   }, [debouncedContent, documentId, initialContent]);
 
   const bubbleMenuItems = [

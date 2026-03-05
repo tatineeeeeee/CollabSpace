@@ -26,6 +26,8 @@ import { BoardList } from "./board-list";
 import { BoardCard } from "./board-card";
 import { AddListForm } from "./add-list-form";
 import { CardDialog } from "./card-dialog";
+import { BoardFilterBar, DEFAULT_FILTERS } from "./board-filter-bar";
+import type { BoardFilters } from "./board-filter-bar";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 
@@ -46,6 +48,7 @@ export function KanbanBoard({ boardId, workspaceId }: KanbanBoardProps) {
 
   const [activeItem, setActiveItem] = useState<DragItem | null>(null);
   const [selectedCard, setSelectedCard] = useState<Doc<"cards"> | null>(null);
+  const [filters, setFilters] = useState<BoardFilters>(DEFAULT_FILTERS);
 
   // Local state for optimistic card moves during drag
   const [localCardOverrides, setLocalCardOverrides] = useState<
@@ -63,9 +66,55 @@ export function KanbanBoard({ boardId, workspaceId }: KanbanBoardProps) {
     return [...lists].sort((a, b) => a.order - b.order);
   }, [lists]);
 
+  // Apply filters to cards (date boundaries computed outside useMemo to avoid impure calls)
+  const now = Date.now();
+  const endOfWeek = new Date();
+  endOfWeek.setDate(endOfWeek.getDate() + (7 - endOfWeek.getDay()));
+  endOfWeek.setHours(23, 59, 59, 999);
+  const endOfWeekTs = endOfWeek.getTime();
+  const endOfMonth = new Date();
+  endOfMonth.setMonth(endOfMonth.getMonth() + 1, 0);
+  endOfMonth.setHours(23, 59, 59, 999);
+  const endOfMonthTs = endOfMonth.getTime();
+
+  const filteredCards = useMemo(() => {
+    if (!cards) return null;
+
+    const hasFilters =
+      filters.labelColors.length > 0 ||
+      filters.assigneeIds.length > 0 ||
+      filters.dueDateFilter !== "all";
+
+    if (!hasFilters) return cards;
+
+    return cards.filter((card) => {
+      if (filters.labelColors.length > 0) {
+        const cardColors = card.labels?.map((l) => l.color) ?? [];
+        if (!filters.labelColors.some((c) => cardColors.includes(c))) return false;
+      }
+      if (filters.assigneeIds.length > 0) {
+        if (!card.assigneeId || !filters.assigneeIds.includes(card.assigneeId))
+          return false;
+      }
+      if (filters.dueDateFilter !== "all") {
+        if (filters.dueDateFilter === "no_date") {
+          if (card.dueDate) return false;
+        } else if (!card.dueDate) {
+          return false;
+        } else {
+          if (filters.dueDateFilter === "overdue" && card.dueDate >= now) return false;
+          if (filters.dueDateFilter === "this_week" && card.dueDate > endOfWeekTs) return false;
+          if (filters.dueDateFilter === "this_month" && card.dueDate > endOfMonthTs) return false;
+        }
+      }
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cards, filters]);
+
   // Group cards by list, applying any local overrides
   const cardsByList = useMemo(() => {
-    if (!cards) return new Map<string, Doc<"cards">[]>();
+    if (!filteredCards) return new Map<string, Doc<"cards">[]>();
 
     const map = new Map<string, Doc<"cards">[]>();
 
@@ -74,7 +123,7 @@ export function KanbanBoard({ boardId, workspaceId }: KanbanBoardProps) {
       map.set(list._id, []);
     }
 
-    for (const card of cards) {
+    for (const card of filteredCards) {
       const listId = localCardOverrides.get(card._id) ?? card.listId;
       const listIdStr = listId as string;
       const existing = map.get(listIdStr) ?? [];
@@ -88,7 +137,7 @@ export function KanbanBoard({ boardId, workspaceId }: KanbanBoardProps) {
     }
 
     return map;
-  }, [cards, sortedLists, localCardOverrides]);
+  }, [filteredCards, sortedLists, localCardOverrides]);
 
   const listIds = sortedLists.map((l) => l._id);
 
@@ -234,6 +283,12 @@ export function KanbanBoard({ boardId, workspaceId }: KanbanBoardProps) {
 
   return (
     <>
+      <BoardFilterBar
+        filters={filters}
+        onFiltersChange={setFilters}
+        workspaceId={workspaceId}
+        cards={cards ?? []}
+      />
       <div className="flex h-full gap-4 overflow-x-auto p-4">
         <DndContext
           sensors={sensors}

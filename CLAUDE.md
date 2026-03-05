@@ -4,7 +4,7 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 
 ## Tech Stack
 
-- **Framework:** Next.js 16 (App Router, Server Components, TypeScript)
+- **Framework:** Next.js 16 (App Router, Server Components, TypeScript, React Compiler)
 - **Database / Real-time:** Convex
 - **Authentication:** Clerk
 - **Styling:** Tailwind CSS v4
@@ -54,12 +54,39 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 - Convex functions: `kebab-case.ts` or `camelCase.ts` matching the table name (e.g., `documents.ts`, `cards.ts`)
 - Route segments: `kebab-case` folders
 
-### React / Next.js Patterns
+### React 19.2 / React Compiler Patterns
+- **React Compiler is enabled** (`reactCompiler: true` in `next.config.ts`) — automatic memoization, no manual `useMemo`/`useCallback` needed in most cases
+- **Rules of React are enforced** by compiler-powered ESLint rules (`eslint-plugin-react-hooks`):
+  - `set-state-in-render` — never call `setState` during render phase
+  - `set-state-in-effect` — never call `setState` synchronously inside `useEffect`; use `useEffectEvent` instead
+  - `refs` — never read/write refs during render; only in effects and event handlers
+  - `immutability` — never mutate props, state, or other immutable values
+- **`useEffectEvent`** (React 19.2) — use for non-reactive logic in effects that should not trigger re-runs:
+  ```tsx
+  const onSave = useEffectEvent((data: string) => {
+    setSaveStatus("saving");
+    saveMutation({ content: data });
+  });
+  useEffect(() => { onSave(debouncedContent); }, [debouncedContent]);
+  ```
+  This replaces the old `useRef` callback pattern. Effect events always see the latest props/state and must NOT appear in dependency arrays.
+- **Never call impure functions inside `useMemo`** — `Date.now()`, `new Date()`, `Math.random()` etc. are impure. Compute them outside the memo and pass as regular variables.
+- **`<Activity>`** component (React 19.2) — use for pre-rendering hidden content while maintaining state:
+  ```tsx
+  <Activity mode={isVisible ? 'visible' : 'hidden'}><Page /></Activity>
+  ```
+  Better than conditional rendering when you want to preserve state across visibility changes.
+
+### Next.js 16 Patterns
 - Use Server Components by default; only add `"use client"` when necessary
 - Page components (`page.tsx`) and layout components (`layout.tsx`) are default exports
 - Co-locate route-specific components in `_components/` folders within route groups
 - Use `loading.tsx` files for Suspense fallbacks where applicable
 - Handle errors with `error.tsx` boundaries
+- **`proxy.ts` not `middleware.ts`** — Next.js 16 renamed middleware to proxy
+- **Turbopack** is the default bundler (2-5x faster builds)
+- **`async params/searchParams`** — must use `await params` in page components
+- **React Compiler** built-in via `reactCompiler: true` in `next.config.ts` (requires `babel-plugin-react-compiler`)
 
 ### Convex Patterns
 - All database queries use `query()` with proper auth checks via `ctx.auth.getUserIdentity()`
@@ -99,14 +126,16 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 - On drag end: compute new order values and call Convex reorder mutation
 
 ### Documents (Editor)
-- Tiptap editor with extensions: StarterKit, Placeholder, TaskList, TaskItem, Link, Highlight, TextAlign, Underline
+- Tiptap editor with extensions: StarterKit, Placeholder, TaskList, TaskItem, Link, Highlight, TextAlign, Underline, Callout (custom), SlashCommand
+- **Slash command menu** (`slash-command.tsx`) — type `/` to open a floating command palette with block types (Text, H1-H3, lists, quote, code block, divider, callout). Uses `@tiptap/suggestion` for trigger detection, keyboard nav, and popup positioning.
+- **Callout extension** (`callout-extension.ts`) — custom Tiptap block node with styled info box (left border + background tint + emoji icon). Supports `setCallout()` and `toggleCallout()` commands.
 - Debounce content saves to Convex (500ms delay)
 - Content stored as stringified Tiptap JSON
 - Support nested documents via `parentDocumentId` self-reference
 - Persistent toolbar (`editor-toolbar.tsx`) with heading select, inline formatting, lists, alignment, highlight, code, and link insertion
 - Editor footer (`editor-footer.tsx`) shows word count and save status ("Saved" / "Saving..." / "Unsaved changes")
 - Word count initialized via `useState` initializer (parse Tiptap JSON), updated in `onUpdate` callback
-- Save status managed via `useRef` callback pattern to avoid `setState`-in-effect lint errors
+- Save status managed via `useEffectEvent` (React 19.2) — replaces the old `useRef` callback pattern
 - Cover image picker supports gallery images, solid colors, gradients, custom URLs, and "Surprise me" random selection
 
 ### Activity Logging
@@ -117,10 +146,18 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 - Activity page at `/activity` shows workspace-scoped history with avatars and relative timestamps
 
 ### Card Dialog
-- Supports title, description (debounced save), labels, due date (Calendar picker from shadcn), and assignee (DropdownMenu with workspace members)
+- Supports title, description (debounced save), labels, due date (Calendar picker from shadcn), assignee (DropdownMenu with workspace members), **checklist**, and **cover color**
+- **Checklist** — array of `{ id, text, completed }` items stored on the card. Progress bar + item count. Add/toggle/edit/remove items. IDs generated via `crypto.randomUUID()`.
+- **Cover color** — optional color strip at top of board cards. 10 preset colors with a picker in the dialog. Clear button to remove.
 - `workspaceId` prop threaded from `[boardId]/page.tsx` → `KanbanBoard` → `CardDialog`
 - Due date uses `date-fns` `format()` for display; clear button to remove
 - Assignee queries `api.workspaces.getMembers`
+
+### Board Filtering
+- **Filter bar** (`board-filter-bar.tsx`) — renders above the kanban board with dropdowns for label (multi-select), assignee (multi-select), and due date status (overdue / this week / this month / no date)
+- Client-side filtering — all cards already loaded via `useQuery`, filtered in a `useMemo` before grouping by list
+- Active filter count badge + "Clear" button when filters are active
+- Drag-and-drop works correctly with filters — order calculations use the full unfiltered card list
 
 ## Database Tables (Convex)
 
@@ -164,7 +201,7 @@ Required in `.env.local`:
 - Use `loading.tsx` files for streaming/suspense on route transitions
 - Debounce expensive operations (editor saves, search input) with 300-500ms delay
 - Use Convex indexes on every query — never do `.collect()` on an unindexed table scan
-- Memoize expensive computations with `useMemo` and callbacks with `useCallback` only when profiling shows a need
+- **React Compiler handles memoization automatically** — do not manually add `useMemo`/`useCallback`/`React.memo` unless profiling shows the compiler missed an optimization. The compiler analyzes data flow and adds granular memoization at build time.
 
 ### Security
 - All Convex queries and mutations must verify auth via `ctx.auth.getUserIdentity()` as the first line
@@ -250,10 +287,20 @@ Required in `.env.local`:
 - **Auto-create user records in mutations** — The Clerk webhook may not have fired yet when a new user first interacts with the app. Mutations like `workspaces:create` should auto-insert a user record using `identity.name`, `identity.email`, and `identity.pictureUrl` if the user doesn't exist in the `users` table.
 - **Use `internalMutation` for server-only operations** — Functions called from webhooks or other server-side code should use `internalMutation`/`internalQuery` so they can't be called from the client.
 
-### React / HTML
+### React 19.2 / HTML
 - **`<div>` inside `<p>` causes hydration errors** — shadcn `<Skeleton>` renders as a `<div>`. Never put it inside a `<p>` tag. Use a `<div>` wrapper instead when content may include block-level elements.
-- **Never set state during render** — Sync data from `useQuery()` to local state with `useEffect`, not inline `if` statements during render. React will throw errors if you call `setState` during the render phase.
-- **Never call `setState` synchronously inside `useEffect`** — The `react-hooks/set-state-in-effect` lint rule catches this. Instead, use a `useRef` callback pattern: store the function in a ref, call `ref.current(...)` inside the effect. This avoids cascading renders and satisfies the linter.
+- **Never set state during render** — Sync data from `useQuery()` to local state with `useEffect`, not inline `if` statements during render. React Compiler's `set-state-in-render` rule enforces this.
+- **Never call `setState` synchronously inside `useEffect`** — Use `useEffectEvent` (React 19.2) instead of the old `useRef` callback pattern. The compiler's `set-state-in-effect` rule enforces this:
+  ```tsx
+  // ✅ Correct: useEffectEvent
+  const onSave = useEffectEvent((data) => { setSaveStatus("saving"); });
+  useEffect(() => { onSave(data); }, [data]);
+
+  // ❌ Wrong: setState directly in effect
+  useEffect(() => { setSaveStatus("saving"); }, [data]);
+  ```
+- **Never read/write refs during render** — Only access `ref.current` inside effects and event handlers. The compiler's `refs` rule enforces this.
+- **Never call impure functions in `useMemo`** — `Date.now()`, `new Date()`, `Math.random()` produce unstable results. Compute outside the memo and pass as variables.
 - **Use `useState` initializer for derived initial values** — Instead of computing initial state in a `useEffect` (which triggers an extra render), pass a function to `useState(() => computeValue())`. Example: computing initial word count from Tiptap JSON.
 - **zustand `persist` middleware** — Use for UI state that should survive page refreshes (e.g., active workspace ID, sidebar collapsed). Store name must be unique: `{ name: "collabspace-workspace" }`. Use `partialize` to exclude transient state like `mobileOpen`.
 - **Convex `getMembers` returns nullable items** — When mapping over arrays that may contain `null` (e.g., user lookups that failed), filter with a type guard: `.filter((m): m is NonNullable<typeof m> => m !== null)`.

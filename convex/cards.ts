@@ -62,6 +62,16 @@ export const update = mutation({
     ),
     dueDate: v.optional(v.number()),
     assigneeId: v.optional(v.id("users")),
+    checklistItems: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          text: v.string(),
+          completed: v.boolean(),
+        })
+      )
+    ),
+    coverColor: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedUser(ctx);
@@ -82,6 +92,8 @@ export const update = mutation({
     if (args.labels !== undefined) updates.labels = args.labels;
     if (args.dueDate !== undefined) updates.dueDate = args.dueDate;
     if (args.assigneeId !== undefined) updates.assigneeId = args.assigneeId;
+    if (args.checklistItems !== undefined) updates.checklistItems = args.checklistItems;
+    if (args.coverColor !== undefined) updates.coverColor = args.coverColor;
 
     await ctx.db.patch(args.id, updates);
 
