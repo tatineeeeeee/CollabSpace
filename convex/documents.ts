@@ -67,6 +67,15 @@ export const update = mutation({
     if (args.coverImage !== undefined) updates.coverImage = args.coverImage;
 
     await ctx.db.patch(args.id, updates);
+
+    await ctx.db.insert("activities", {
+      userId: user._id,
+      workspaceId: document.workspaceId,
+      type: "document_updated",
+      entityId: args.id,
+      entityTitle: args.title ?? document.title,
+      createdAt: Date.now(),
+    });
   },
 });
 
@@ -398,5 +407,35 @@ export const getAncestors = query({
     }
 
     return ancestors;
+  },
+});
+
+export const getRecent = query({
+  args: {
+    workspaceId: v.id("workspaces"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const user = await getAuthenticatedUser(ctx);
+    if (!user) return [];
+
+    const membership = await verifyMembership(ctx, user._id, args.workspaceId);
+    if (!membership) return [];
+
+    const limit = args.limit ?? 10;
+
+    const documents = await ctx.db
+      .query("documents")
+      .withIndex("by_workspace_archived", (q) =>
+        q.eq("workspaceId", args.workspaceId).eq("isArchived", false)
+      )
+      .collect();
+
+    return documents
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, limit);
   },
 });

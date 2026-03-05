@@ -121,12 +121,38 @@ export const reorder = mutation({
     const membership = await verifyMembership(ctx, user._id, board.workspaceId);
     if (!membership) throw new Error("Not a member of this workspace");
 
-    for (const item of args.items) {
+    // Snapshot current listIds to detect cross-list moves
+    const snapshots = await Promise.all(
+      args.items.map(async (item) => ({
+        item,
+        card: await ctx.db.get(item.id),
+      }))
+    );
+
+    for (const { item } of snapshots) {
       await ctx.db.patch(item.id, {
         listId: item.listId,
         order: item.order,
         updatedAt: Date.now(),
       });
+    }
+
+    // Log activity only for cards that moved between lists
+    for (const { item, card } of snapshots) {
+      if (card && item.listId !== card.listId) {
+        await ctx.db.insert("activities", {
+          userId: user._id,
+          workspaceId: board.workspaceId,
+          type: "card_moved",
+          entityId: item.id,
+          entityTitle: card.title,
+          metadata: JSON.stringify({
+            fromListId: card.listId,
+            toListId: item.listId,
+          }),
+          createdAt: Date.now(),
+        });
+      }
     }
   },
 });

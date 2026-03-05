@@ -13,7 +13,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { IconPicker } from "@/components/shared/icon-picker";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import { ArrowLeft, MoreHorizontal, Smile, Trash, X } from "lucide-react";
+import { ArrowLeft, Menu, MoreHorizontal, Smile, Trash, X } from "lucide-react";
+import { useSidebarStore } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Doc } from "@/convex/_generated/dataModel";
@@ -27,10 +28,14 @@ export function BoardHeader({ board }: BoardHeaderProps) {
   const update = useMutation(api.boards.update);
   const archive = useMutation(api.boards.archive);
 
+  const { setMobileOpen } = useSidebarStore();
+
   const [localTitle, setLocalTitle] = useState<string | null>(null);
+  const [localDesc, setLocalDesc] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const title = localTitle ?? board.title;
+  const description = localDesc ?? (board.description ?? "");
 
   const handleTitleSubmit = async () => {
     const trimmed = (localTitle ?? board.title).trim();
@@ -57,6 +62,22 @@ export function BoardHeader({ board }: BoardHeaderProps) {
     await update({ id: board._id, icon: "" });
   };
 
+  const handleDescSubmit = async () => {
+    const trimmed = (localDesc ?? (board.description ?? "")).trim();
+    setLocalDesc(null);
+    if (trimmed !== (board.description ?? "")) {
+      await update({ id: board._id, description: trimmed });
+    }
+  };
+
+  const handleDescKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleDescSubmit();
+      (e.target as HTMLInputElement).blur();
+    }
+  };
+
   const handleArchive = async () => {
     try {
       await archive({ id: board._id });
@@ -68,15 +89,24 @@ export function BoardHeader({ board }: BoardHeaderProps) {
   };
 
   return (
-    <div className="flex items-center gap-3 border-b px-4 py-2">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 shrink-0"
-        onClick={() => router.push("/boards")}
-      >
-        <ArrowLeft className="h-4 w-4" />
-      </Button>
+    <div className="flex flex-col border-b">
+      <div className="flex items-center gap-3 px-4 py-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0 md:hidden"
+          onClick={() => setMobileOpen(true)}
+        >
+          <Menu className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          onClick={() => router.push("/boards")}
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
 
       {/* Icon */}
       {board.icon ? (
@@ -88,6 +118,7 @@ export function BoardHeader({ board }: BoardHeaderProps) {
           </IconPicker>
           <button
             onClick={handleRemoveIcon}
+            title="Remove icon"
             className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-muted opacity-0 shadow-sm transition-opacity group-hover/icon:opacity-100"
           >
             <X className="h-2.5 w-2.5 text-muted-foreground" />
@@ -140,6 +171,19 @@ export function BoardHeader({ board }: BoardHeaderProps) {
           </ConfirmDialog>
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
+
+      <div className="px-4 pb-2">
+        <input
+          value={description}
+          onChange={(e) => setLocalDesc(e.target.value)}
+          onFocus={() => setLocalDesc(description)}
+          onBlur={handleDescSubmit}
+          onKeyDown={handleDescKeyDown}
+          className="w-full bg-transparent text-sm text-muted-foreground outline-none placeholder:text-muted-foreground/50"
+          placeholder="Add a description..."
+        />
+      </div>
     </div>
   );
 }

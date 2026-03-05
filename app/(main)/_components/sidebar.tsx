@@ -10,6 +10,7 @@ import {
   FileText,
   Kanban,
   Settings,
+  Activity,
   Search,
   ChevronsLeft,
   Plus,
@@ -40,6 +41,7 @@ const routes = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
   { label: "Documents", icon: FileText, href: "/documents" },
   { label: "Boards", icon: Kanban, href: "/boards" },
+  { label: "Activity", icon: Activity, href: "/activity" },
   { label: "Settings", icon: Settings, href: "/settings" },
 ];
 
@@ -108,6 +110,7 @@ function SidebarContent({
   const router = useRouter();
   const { activeWorkspaceId } = useWorkspaceStore();
   const { open: openSearch } = useSearchStore();
+  const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   const createDocument = useMutation(api.documents.create);
 
   const handleCreateDocument = async () => {
@@ -143,7 +146,7 @@ function SidebarContent({
             <Search className="h-4 w-4" />
             Search
             <kbd className="ml-auto rounded border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-              Ctrl+K
+              {isMac ? "⌘K" : "Ctrl+K"}
             </kbd>
           </Button>
         </div>
@@ -151,21 +154,26 @@ function SidebarContent({
         <Separator className="my-2" />
 
         <nav className="flex flex-col gap-1">
-          {routes.map((route) => (
-            <Link key={route.href} href={route.href} onClick={onNavigate}>
-              <Button
-                variant={pathname === route.href ? "secondary" : "ghost"}
-                className={cn(
-                  "w-full justify-start gap-2",
-                  pathname === route.href && "font-medium"
-                )}
-                size="sm"
-              >
-                <route.icon className="h-4 w-4" />
-                {route.label}
-              </Button>
-            </Link>
-          ))}
+          {routes.map((route) => {
+            const isActive =
+              pathname === route.href ||
+              pathname.startsWith(route.href + "/");
+            return (
+              <Link key={route.href} href={route.href} onClick={onNavigate}>
+                <Button
+                  variant={isActive ? "secondary" : "ghost"}
+                  className={cn(
+                    "w-full justify-start gap-2",
+                    isActive && "font-medium"
+                  )}
+                  size="sm"
+                >
+                  <route.icon className="h-4 w-4" />
+                  {route.label}
+                </Button>
+              </Link>
+            );
+          })}
         </nav>
 
         <Separator className="my-2" />

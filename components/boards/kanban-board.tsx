@@ -31,13 +31,14 @@ import type { Doc, Id } from "@/convex/_generated/dataModel";
 
 interface KanbanBoardProps {
   boardId: Id<"boards">;
+  workspaceId: Id<"workspaces">;
 }
 
 type DragItem =
   | { type: "list"; list: Doc<"lists"> }
   | { type: "card"; card: Doc<"cards"> };
 
-export function KanbanBoard({ boardId }: KanbanBoardProps) {
+export function KanbanBoard({ boardId, workspaceId }: KanbanBoardProps) {
   const lists = useQuery(api.lists.getByBoard, { boardId });
   const cards = useQuery(api.cards.getByBoard, { boardId });
   const reorderLists = useMutation(api.lists.reorder);
@@ -277,7 +278,7 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
         <AddListForm boardId={boardId} />
       </div>
 
-      <CardDialog card={selectedCard} onClose={() => setSelectedCard(null)} />
+      <CardDialog card={selectedCard} onClose={() => setSelectedCard(null)} workspaceId={workspaceId} />
     </>
   );
 }

@@ -65,7 +65,7 @@ export default function BoardDetailPage() {
     <div className="flex h-full flex-col">
       <BoardHeader board={board} />
       <div className="flex-1 overflow-hidden">
-        <KanbanBoard boardId={boardId} />
+        <KanbanBoard boardId={boardId} workspaceId={board.workspaceId} />
       </div>
     </div>
   );

@@ -17,17 +17,19 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 
 ## Project Structure
 
-- `app/(marketing)/` — Public landing page (no auth required)
-- `app/(auth)/` — Clerk sign-in / sign-up pages
+- `app/(marketing)/` — Public landing page: hero, features, how-it-works, CTA, footer
+- `app/(auth)/` — Clerk sign-in / sign-up with split-screen brand layout
 - `app/(main)/` — Authenticated app (protected by Clerk middleware)
+- `app/(public)/` — Public routes (document preview with OG meta tags)
 - `components/ui/` — shadcn/ui components (do not manually edit, use `npx shadcn@latest add`)
 - `components/providers/` — Context providers (Convex, Clerk, Theme)
-- `components/documents/` — Document-related components (editor, toolbar, list)
-- `components/boards/` — Kanban board components (columns, cards, drag-and-drop)
-- `components/shared/` — Shared/reusable components (spinner, icon-picker, confirm-dialog)
+- `components/documents/` — Document editor, toolbar, footer, list, cover image, trash
+- `components/boards/` — Kanban board, columns, cards, card dialog, drag-and-drop
+- `components/shared/` — Shared/reusable components (spinner, icon-picker, confirm-dialog, empty-state)
 - `convex/` — Backend: schema, queries, mutations, HTTP actions
-- `hooks/` — Custom React hooks
-- `lib/utils.ts` — Utility functions (cn helper)
+- `hooks/` — Custom React hooks (zustand stores, debounce, search)
+- `lib/utils.ts` — Utility functions (cn helper, formatRelativeTime)
+- `lib/activity-labels.ts` — Shared activity type label map
 
 ## Commands
 
@@ -66,7 +68,9 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 - Convex functions should validate that the user has access to the workspace/resource
 - Store Tiptap editor content as stringified JSON (`v.string()`)
 - Use `isArchived` for soft deletes — never hard delete user content
-- Log user actions to the `activities` table from mutations
+- Log user actions to the `activities` table from mutations (see Activity Logging section)
+- Use `fetchQuery` from `convex/nextjs` for server-side data fetching (e.g., `generateMetadata` in layout files for OG tags)
+- Helper functions `getAuthenticatedUser` and `verifyMembership` live in `convex/lib.ts` — reuse them in all mutations/queries
 
 ### Styling
 - Use Tailwind CSS utility classes — no custom CSS unless absolutely necessary
@@ -82,11 +86,11 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 
 ### Authentication & Organizations
 - Clerk proxy (`proxy.ts`) protects all `(main)` routes — Next.js 16 uses `proxy.ts` not `middleware.ts`
-- Public routes: `/`, `/sign-in`, `/sign-up`, `/api/webhooks`
+- Public routes: `/`, `/sign-in`, `/sign-up`, `/api/webhooks`, `/preview/*`
 - Convex functions always verify auth via `ctx.auth.getUserIdentity()`
 - User data synced from Clerk to Convex `users` table via webhook
 - Use Clerk Organizations for team/org management
-- All data (documents, boards, cards) is scoped to an organization
+- All data (documents, boards, cards) is scoped to a workspace
 
 ### Drag & Drop (Kanban)
 - Use `@dnd-kit/core` for DndContext and sensors
@@ -95,10 +99,28 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 - On drag end: compute new order values and call Convex reorder mutation
 
 ### Documents (Editor)
-- Tiptap editor with extensions: StarterKit, Placeholder, TaskList, TaskItem, Link, Highlight, TextAlign
+- Tiptap editor with extensions: StarterKit, Placeholder, TaskList, TaskItem, Link, Highlight, TextAlign, Underline
 - Debounce content saves to Convex (500ms delay)
 - Content stored as stringified Tiptap JSON
 - Support nested documents via `parentDocumentId` self-reference
+- Persistent toolbar (`editor-toolbar.tsx`) with heading select, inline formatting, lists, alignment, highlight, code, and link insertion
+- Editor footer (`editor-footer.tsx`) shows word count and save status ("Saved" / "Saving..." / "Unsaved changes")
+- Word count initialized via `useState` initializer (parse Tiptap JSON), updated in `onUpdate` callback
+- Save status managed via `useRef` callback pattern to avoid `setState`-in-effect lint errors
+- Cover image picker supports gallery images, solid colors, gradients, custom URLs, and "Surprise me" random selection
+
+### Activity Logging
+- User actions are logged to the `activities` table from Convex mutations
+- Activity types: `document_created`, `document_updated`, `document_archived`, `board_created`, `board_archived`, `card_created`, `card_moved`, etc.
+- Shared label map in `lib/activity-labels.ts` — import `ACTIVITY_LABELS` for UI display
+- Card drag-and-drop logs `card_moved` only when a card changes lists (not just reordering within same list)
+- Activity page at `/activity` shows workspace-scoped history with avatars and relative timestamps
+
+### Card Dialog
+- Supports title, description (debounced save), labels, due date (Calendar picker from shadcn), and assignee (DropdownMenu with workspace members)
+- `workspaceId` prop threaded from `[boardId]/page.tsx` → `KanbanBoard` → `CardDialog`
+- Due date uses `date-fns` `format()` for display; clear button to remove
+- Assignee queries `api.workspaces.getMembers`
 
 ## Database Tables (Convex)
 
@@ -169,12 +191,22 @@ Required in `.env.local`:
 
 ### UI / UX
 - Always provide loading states (skeletons) for data-fetching components
-- Always provide empty states when there are no items to display
-- Use toast notifications for success/error feedback on actions
-- Support keyboard navigation — Cmd+K for search, Escape to close modals
+- Always provide empty states (use `EmptyState` component from `components/shared/empty-state`)
+- Use toast notifications (sonner) for success/error feedback on actions
+- Support keyboard navigation — Cmd+K for search, Ctrl+N for new items, Escape to close modals
+- Platform-aware shortcut hints: detect Mac via `navigator.platform`, show `⌘` vs `Ctrl`
 - Make the sidebar collapsible on desktop and use a sheet (slide-over) on mobile
+- Persist sidebar collapsed state with zustand `persist` middleware (`partialize` to exclude `mobileOpen`)
 - Use consistent spacing and sizing from Tailwind's default scale
 - Follow shadcn/ui component patterns — don't reinvent buttons, dialogs, dropdowns
+- Use `ConfirmDialog` (shared component) for destructive actions — wraps AlertDialog with confirm/cancel
+- Inline editing pattern: `localValue` state (null = using server value), set on focus, clear on blur/submit
+- Deduplicate shared UI: render modals/dialogs once outside conditional branches, not in each branch
+- Board cards should show timestamps (`formatRelativeTime`) and workspace emoji icons where available
+- Landing page: gradient hero, mock product screenshot, "How it works" steps, bottom CTA, 4-column footer
+- Auth pages: split-screen layout (brand panel on desktop, "Back to home" on mobile)
+- Public preview: sticky bottom CTA bar ("Made with CollabSpace" + sign-up button)
+- Settings page sections: workspace icon, workspace name, members list, appearance theme picker, danger zone
 
 ### Code Quality
 - Write self-documenting code — clear variable/function names over comments
@@ -210,7 +242,14 @@ Required in `.env.local`:
 ### React / HTML
 - **`<div>` inside `<p>` causes hydration errors** — shadcn `<Skeleton>` renders as a `<div>`. Never put it inside a `<p>` tag. Use a `<div>` wrapper instead when content may include block-level elements.
 - **Never set state during render** — Sync data from `useQuery()` to local state with `useEffect`, not inline `if` statements during render. React will throw errors if you call `setState` during the render phase.
-- **zustand `persist` middleware** — Use for UI state that should survive page refreshes (e.g., active workspace ID). Store name must be unique: `{ name: "collabspace-workspace" }`.
+- **Never call `setState` synchronously inside `useEffect`** — The `react-hooks/set-state-in-effect` lint rule catches this. Instead, use a `useRef` callback pattern: store the function in a ref, call `ref.current(...)` inside the effect. This avoids cascading renders and satisfies the linter.
+- **Use `useState` initializer for derived initial values** — Instead of computing initial state in a `useEffect` (which triggers an extra render), pass a function to `useState(() => computeValue())`. Example: computing initial word count from Tiptap JSON.
+- **zustand `persist` middleware** — Use for UI state that should survive page refreshes (e.g., active workspace ID, sidebar collapsed). Store name must be unique: `{ name: "collabspace-workspace" }`. Use `partialize` to exclude transient state like `mobileOpen`.
+- **Convex `getMembers` returns nullable items** — When mapping over arrays that may contain `null` (e.g., user lookups that failed), filter with a type guard: `.filter((m): m is NonNullable<typeof m> => m !== null)`.
+
+### Tailwind v4
+- **`bg-linear-to-*` not `bg-gradient-to-*`** — Tailwind v4 uses the canonical `bg-linear-to-br`, `bg-linear-to-b` etc. instead of the v3 `bg-gradient-to-*` shorthand.
+- **shadcn `--overwrite` flag** — When adding shadcn components that already exist, use `npx shadcn@latest add <component> --overwrite` (not `-y`, which triggers interactive prompts).
 
 ### Clerk Webhook Setup
 - Endpoint URL: `https://<convex-deployment>.convex.site/webhooks/clerk`

@@ -10,17 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import { Monitor, Sun, Moon } from "lucide-react";
+import { IconPicker } from "@/components/shared/icon-picker";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Id } from "@/convex/_generated/dataModel";
+import { MembersSection } from "./_components/members-section";
 
 const themeOptions = [
   { value: "system", label: "System", icon: Monitor },
@@ -79,9 +75,7 @@ export default function SettingsPage() {
   const removeWorkspace = useMutation(api.workspaces.remove);
 
   const [name, setName] = useState("");
-  const [deleteOpen, setDeleteOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   // Sync input with loaded workspace name
   useEffect(() => {
@@ -106,16 +100,25 @@ export default function SettingsPage() {
 
   const handleDelete = async () => {
     if (!activeWorkspaceId) return;
-    setDeleting(true);
     try {
       await removeWorkspace({ id: activeWorkspaceId as Id<"workspaces"> });
       setActiveWorkspaceId(null);
-      setDeleteOpen(false);
       toast.success("Workspace deleted");
     } catch {
       toast.error("Failed to delete workspace");
-    } finally {
-      setDeleting(false);
+    }
+  };
+
+  const handleIconChange = async (icon: string) => {
+    if (!activeWorkspaceId) return;
+    try {
+      await updateWorkspace({
+        id: activeWorkspaceId as Id<"workspaces">,
+        icon,
+      });
+      toast.success("Icon updated");
+    } catch {
+      toast.error("Failed to update icon");
     }
   };
 
@@ -152,6 +155,23 @@ export default function SettingsPage() {
       </p>
 
       <div className="flex flex-col gap-6">
+        {/* Workspace Icon */}
+        <div className="rounded-lg border p-6">
+          <h2 className="mb-4 text-lg font-semibold">Workspace icon</h2>
+          <div className="flex items-center gap-3">
+            <IconPicker onChange={handleIconChange}>
+              <button className="flex h-12 w-12 items-center justify-center rounded-lg border-2 border-dashed text-2xl hover:bg-muted">
+                {workspace.icon ?? "🏢"}
+              </button>
+            </IconPicker>
+            <p className="text-sm text-muted-foreground">
+              Click to choose an emoji icon for your workspace
+            </p>
+          </div>
+        </div>
+
+        <Separator />
+
         {/* Rename */}
         <div className="rounded-lg border p-6">
           <h2 className="mb-4 text-lg font-semibold">Workspace name</h2>
@@ -183,6 +203,13 @@ export default function SettingsPage() {
 
         <Separator />
 
+        {/* Members */}
+        <MembersSection
+          workspaceId={activeWorkspaceId as Id<"workspaces">}
+        />
+
+        <Separator />
+
         {/* Appearance */}
         <AppearanceSection />
 
@@ -197,43 +224,19 @@ export default function SettingsPage() {
             Deleting a workspace is permanent and cannot be undone. All
             documents and boards inside will be lost.
           </p>
-          <Button
+          <ConfirmDialog
+            onConfirm={handleDelete}
+            title="Delete workspace?"
+            description={`This will permanently delete "${workspace.name}" and all its content. This action cannot be undone.`}
+            confirmLabel="Delete"
             variant="destructive"
-            size="sm"
-            onClick={() => setDeleteOpen(true)}
           >
-            Delete workspace
-          </Button>
+            <Button variant="destructive" size="sm" type="button">
+              Delete workspace
+            </Button>
+          </ConfirmDialog>
         </div>
       </div>
-
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete workspace?</DialogTitle>
-            <DialogDescription>
-              This will permanently delete &quot;{workspace.name}&quot; and all
-              its content. This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              variant="outline"
-              onClick={() => setDeleteOpen(false)}
-              disabled={deleting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleting}
-            >
-              Delete
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -4,7 +4,9 @@ import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -66,7 +68,7 @@ export default function PreviewPage() {
     : undefined;
 
   return (
-    <div className="mx-auto max-w-4xl pb-40">
+    <div className="mx-auto max-w-4xl pb-20">
       {document.coverImage && (
         <div
           className="h-[35vh] min-h-[200px] max-h-[280px] w-full"
@@ -87,6 +89,17 @@ export default function PreviewPage() {
             initialContent={document.content}
             editable={false}
           />
+        </div>
+      </div>
+
+      <div className="fixed bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-3">
+          <p className="text-sm text-muted-foreground">
+            Made with <span className="font-medium text-foreground">CollabSpace</span>
+          </p>
+          <Link href="/sign-up">
+            <Button size="sm">Try CollabSpace free</Button>
+          </Link>
         </div>
       </div>
     </div>

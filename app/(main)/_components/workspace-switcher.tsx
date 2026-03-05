@@ -76,7 +76,9 @@ export function WorkspaceSwitcher() {
           >
             <div className="flex min-w-0 items-center gap-2">
               <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary text-[10px] font-bold text-primary-foreground">
-                {activeWorkspace?.name?.[0]?.toUpperCase() ?? (
+                {activeWorkspace?.icon ? (
+                  <span className="text-sm leading-none">{activeWorkspace.icon}</span>
+                ) : activeWorkspace?.name?.[0]?.toUpperCase() ?? (
                   <Building2 className="h-3 w-3" />
                 )}
               </div>
@@ -105,7 +107,11 @@ export function WorkspaceSwitcher() {
                 className="gap-2"
               >
                 <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary text-[10px] font-bold text-primary-foreground">
-                  {ws.name[0]?.toUpperCase()}
+                  {ws.icon ? (
+                    <span className="text-sm leading-none">{ws.icon}</span>
+                  ) : (
+                    ws.name[0]?.toUpperCase()
+                  )}
                 </div>
                 <span className="truncate">{ws.name}</span>
                 {ws._id === activeWorkspaceId && (

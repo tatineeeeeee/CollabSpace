@@ -7,6 +7,7 @@ import { useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import { useWorkspaceStore } from "@/hooks/use-workspace";
 import { formatRelativeTime } from "@/lib/utils";
+import { ACTIVITY_LABELS } from "@/lib/activity-labels";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -27,18 +28,6 @@ import {
 import Link from "next/link";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
-
-const ACTIVITY_LABELS: Record<string, string> = {
-  document_created: "created",
-  document_updated: "updated",
-  document_archived: "archived",
-  document_published: "published",
-  board_created: "created",
-  board_updated: "updated",
-  card_created: "created card in",
-  card_moved: "moved card in",
-  card_updated: "updated card in",
-};
 
 function WidgetSkeleton() {
   return (
@@ -72,9 +61,9 @@ export default function DashboardPage() {
   );
 
   const documents = useQuery(
-    api.documents.getByWorkspace,
+    api.documents.getRecent,
     activeWorkspaceId
-      ? { workspaceId: activeWorkspaceId as Id<"workspaces"> }
+      ? { workspaceId: activeWorkspaceId as Id<"workspaces">, limit: 5 }
       : "skip"
   );
 
@@ -97,9 +86,7 @@ export default function DashboardPage() {
 
   const recentDocuments = useMemo(() => {
     if (!documents || !Array.isArray(documents)) return [];
-    return [...documents]
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-      .slice(0, 5);
+    return documents;
   }, [documents]);
 
   const recentBoards = useMemo(() => {

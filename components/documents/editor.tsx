@@ -23,6 +23,8 @@ import {
   Highlighter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EditorToolbar } from "./editor-toolbar";
+import { EditorFooter } from "./editor-footer";
 import type { Id } from "@/convex/_generated/dataModel";
 
 interface EditorProps {
@@ -40,6 +42,25 @@ export function Editor({
   const [content, setContent] = useState(initialContent ?? "");
   const debouncedContent = useDebounce(content, 500);
   const isInitialMount = useRef(true);
+  const [wordCount, setWordCount] = useState(() => {
+    if (!initialContent) return 0;
+    try {
+      const json = JSON.parse(initialContent);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const extractText = (node: any): string => {
+        if (typeof node?.text === "string") return node.text;
+        if (Array.isArray(node?.content)) return node.content.map(extractText).join(" ");
+        return "";
+      };
+      const text = extractText(json);
+      return text.trim().split(/\s+/).filter(Boolean).length;
+    } catch {
+      return 0;
+    }
+  });
+  const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">(
+    "saved"
+  );
 
   const editor = useEditor({
     extensions: [
@@ -70,8 +91,23 @@ export function Editor({
     },
     onUpdate: ({ editor }) => {
       setContent(JSON.stringify(editor.getJSON()));
+      setSaveStatus("unsaved");
+      const text = editor.getText();
+      const words = text.trim().split(/\s+/).filter(Boolean).length;
+      setWordCount(words);
     },
   });
+
+  const saveContentRef = useRef(
+    (debounced: string, docId: Id<"documents">, initial: string | undefined) => {
+      if (debounced && debounced !== initial) {
+        setSaveStatus("saving");
+        updateContent({ id: docId, content: debounced })
+          .then(() => setSaveStatus("saved"))
+          .catch(() => setSaveStatus("unsaved"));
+      }
+    }
+  );
 
   useEffect(() => {
     if (isInitialMount.current) {
@@ -79,10 +115,8 @@ export function Editor({
       return;
     }
 
-    if (debouncedContent && debouncedContent !== initialContent) {
-      updateContent({ id: documentId, content: debouncedContent });
-    }
-  }, [debouncedContent, documentId, initialContent, updateContent]);
+    saveContentRef.current(debouncedContent, documentId, initialContent);
+  }, [debouncedContent, documentId, initialContent]);
 
   const bubbleMenuItems = [
     {
@@ -124,12 +158,10 @@ export function Editor({
   ];
 
   return (
-    <div>
+    <div className="flex flex-col">
+      {editable && editor && <EditorToolbar editor={editor} />}
       {editor && (
-        <BubbleMenu
-          editor={editor}
-          updateDelay={150}
-        >
+        <BubbleMenu editor={editor} updateDelay={150}>
           <div className="flex items-center gap-0.5 rounded-lg border bg-background p-1 shadow-lg">
             {bubbleMenuItems.map((item) => {
               const Icon = item.icon;
@@ -151,6 +183,9 @@ export function Editor({
         </BubbleMenu>
       )}
       <EditorContent editor={editor} />
+      {editable && (
+        <EditorFooter wordCount={wordCount} saveStatus={saveStatus} />
+      )}
     </div>
   );
 }

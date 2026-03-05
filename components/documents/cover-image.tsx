@@ -101,7 +101,17 @@ function CoverPicker({ onChange, children }: CoverPickerProps) {
 
         <div className="p-3">
           {tab === "gallery" && (
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className="space-y-2">
+              <button
+                onClick={() => {
+                  const all = [...GALLERY_IMAGES, ...SOLID_COLORS, ...GRADIENTS];
+                  handleSelect(all[Math.floor(Math.random() * all.length)]);
+                }}
+                className="w-full rounded-md border border-dashed py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted"
+              >
+                Surprise me
+              </button>
+              <div className="grid grid-cols-5 gap-1.5">
               {GALLERY_IMAGES.map((src) => (
                 <button
                   key={src}
@@ -116,6 +126,7 @@ function CoverPicker({ onChange, children }: CoverPickerProps) {
                   />
                 </button>
               ))}
+              </div>
             </div>
           )}
 
