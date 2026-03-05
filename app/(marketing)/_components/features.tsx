@@ -48,7 +48,7 @@ const features = [
 
 export function Features() {
   return (
-    <section className="border-t bg-muted/50 px-6 py-20">
+    <section id="features" className="border-t bg-muted/50 px-6 py-20">
       <div className="mx-auto max-w-6xl">
         <h2 className="mb-4 text-center text-3xl font-bold tracking-tight">
           Everything your team needs

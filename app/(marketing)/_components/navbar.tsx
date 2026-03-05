@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
-import { SignInButton, UserButton } from "@clerk/nextjs";
+import { UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Loader2, Layers } from "lucide-react";
 
@@ -22,11 +22,11 @@ export function Navbar() {
         {isLoading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
         {!isAuthenticated && !isLoading && (
           <>
-            <SignInButton mode="modal">
+            <Link href="/sign-in">
               <Button variant="ghost" size="sm">
                 Sign In
               </Button>
-            </SignInButton>
+            </Link>
             <Link href="/sign-up">
               <Button size="sm">Get Started</Button>
             </Link>

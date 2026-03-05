@@ -10,8 +10,8 @@ export function CtaSection() {
           Ready to get started?
         </h2>
         <p className="mt-4 text-lg text-muted-foreground">
-          Join teams already using CollabSpace to write, plan, and collaborate
-          together. Free to get started — no credit card required.
+          Start organizing your team&apos;s work today. Documents, boards, and
+          real-time collaboration — free forever, no credit card required.
         </p>
         <div className="mt-8">
           <Link href="/sign-up">

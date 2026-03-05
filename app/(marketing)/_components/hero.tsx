@@ -36,34 +36,27 @@ export function Hero() {
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           )}
           {!isAuthenticated && !isLoading && (
-            <>
-              <Link href="/sign-up">
-                <Button size="lg" className="gap-2">
-                  Get Started Free
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-              <a href="#how-it-works">
-                <Button size="lg" variant="outline">
-                  See how it works
-                </Button>
-              </a>
-            </>
+            <Link href="/sign-up">
+              <Button size="lg" className="gap-2">
+                Get Started Free
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
           )}
           {isAuthenticated && !isLoading && (
-            <>
-              <Link href="/dashboard">
-                <Button size="lg" className="gap-2">
-                  Go to Dashboard
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-              <a href="#how-it-works">
-                <Button size="lg" variant="outline">
-                  See how it works
-                </Button>
-              </a>
-            </>
+            <Link href="/dashboard">
+              <Button size="lg" className="gap-2">
+                Go to Dashboard
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          )}
+          {!isLoading && (
+            <a href="#how-it-works">
+              <Button size="lg" variant="outline">
+                See how it works
+              </Button>
+            </a>
           )}
         </div>
 

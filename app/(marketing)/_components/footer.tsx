@@ -22,13 +22,13 @@ export function Footer() {
             <h4 className="mb-3 text-sm font-semibold">Product</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <a href="#" className="transition-colors hover:text-foreground">
+                <a href="#features" className="transition-colors hover:text-foreground">
                   Features
                 </a>
               </li>
               <li>
-                <a href="#" className="transition-colors hover:text-foreground">
-                  Pricing
+                <a href="#how-it-works" className="transition-colors hover:text-foreground">
+                  How it works
                 </a>
               </li>
             </ul>
@@ -53,7 +53,7 @@ export function Footer() {
 
           {/* Built with */}
           <div>
-            <h4 className="mb-3 text-sm font-semibold">Built with</h4>
+            <h4 className="mb-3 text-sm font-semibold">Tech Stack</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>Next.js</li>
               <li>Convex</li>

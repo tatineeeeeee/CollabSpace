@@ -204,7 +204,18 @@ Required in `.env.local`:
 - Deduplicate shared UI: render modals/dialogs once outside conditional branches, not in each branch
 - Board cards should show timestamps (`formatRelativeTime`) and workspace emoji icons where available
 - Landing page: gradient hero, mock product screenshot, "How it works" steps, bottom CTA, 4-column footer
-- Auth pages: split-screen layout (brand panel on desktop, "Back to home" on mobile)
+- Landing page sections should alternate backgrounds (`bg-muted/50`, `bg-muted/30`) to create visual rhythm
+- Footer links must resolve — never ship `href="#"` placeholders. Link to section anchors or remove the item.
+- CTA copy must be honest — don't claim "Join teams already using X" without real users. Use action-oriented copy.
+- Deduplicate shared elements in conditional branches (e.g., "See how it works" button rendered once outside auth conditionals)
+- Auth pages: split-screen layout (brand panel on desktop, branding + back link on mobile)
+- Auth left panel: use `<Link>` on the logo so users can navigate back to home
+- Auth left panel: keep content focused — headline + checklist OR mockup, not both. Avoid overloading.
+- Auth left panel: never add fake testimonials or fabricated stats — use real features and honest copy
+- Auth left panel: decorative grid patterns need at least 15% opacity to be visible on dark backgrounds
+- Auth right panel: add subtle gradient + glow blobs to avoid flat white/black background
+- Auth layout copy should be generic enough to work on both sign-in and sign-up (shared layout)
+- Use `<Link href="/sign-in">` not `<SignInButton mode="modal">` — route to dedicated auth pages, don't use Clerk modals
 - Public preview: sticky bottom CTA bar ("Made with CollabSpace" + sign-up button)
 - Settings page sections: workspace icon, workspace name, members list, appearance theme picker, danger zone
 
@@ -250,6 +261,12 @@ Required in `.env.local`:
 ### Tailwind v4
 - **`bg-linear-to-*` not `bg-gradient-to-*`** — Tailwind v4 uses the canonical `bg-linear-to-br`, `bg-linear-to-b` etc. instead of the v3 `bg-gradient-to-*` shorthand.
 - **shadcn `--overwrite` flag** — When adding shadcn components that already exist, use `npx shadcn@latest add <component> --overwrite` (not `-y`, which triggers interactive prompts).
+
+### Landing Page & Auth
+- **Never use `<SignInButton mode="modal">`** in the navbar — it opens a Clerk popup and bypasses the custom auth page. Use `<Link href="/sign-in">` instead.
+- **Footer links must resolve** — never ship `href="#"` placeholder links. Either link to a real section/page or remove the item.
+- **Alternate section backgrounds** — use `bg-muted/30` or `bg-muted/50` on alternating sections to create visual rhythm and prevent the "one long block" feel.
+- **Auth panel opacity** — CSS grid patterns and decorative elements on dark backgrounds need at least 15% opacity (`opacity-15`) to be visible. 5-7% is effectively invisible.
 
 ### Clerk Webhook Setup
 - Endpoint URL: `https://<convex-deployment>.convex.site/webhooks/clerk`
