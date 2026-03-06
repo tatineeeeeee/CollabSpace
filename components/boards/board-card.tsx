@@ -1,9 +1,11 @@
 "use client";
 
-import { useSortable } from "@dnd-kit/sortable";
+import { useSortable, defaultAnimateLayoutChanges } from "@dnd-kit/sortable";
+import type { AnimateLayoutChanges } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, CheckSquare, GripVertical } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { AlignLeft, Calendar, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Doc } from "@/convex/_generated/dataModel";
 
@@ -11,9 +13,18 @@ interface BoardCardProps {
   card: Doc<"cards">;
   onClick: () => void;
   isDragOverlay?: boolean;
+  membersMap?: Map<string, { name: string; imageUrl?: string }>;
 }
 
-export function BoardCard({ card, onClick, isDragOverlay }: BoardCardProps) {
+// Suppress layout animation during active sorting (cross-list moves)
+// and right after dragging ends — prevents the snap-back visual
+const cardAnimateLayoutChanges: AnimateLayoutChanges = (args) => {
+  const { wasDragging } = args;
+  if (wasDragging) return false;
+  return defaultAnimateLayoutChanges(args);
+};
+
+export function BoardCard({ card, onClick, isDragOverlay, membersMap }: BoardCardProps) {
   const {
     attributes,
     listeners,
@@ -24,11 +35,14 @@ export function BoardCard({ card, onClick, isDragOverlay }: BoardCardProps) {
   } = useSortable({
     id: card._id,
     data: { type: "card", card },
+    animateLayoutChanges: cardAnimateLayoutChanges,
   });
 
+  // Use Translate (position only) instead of Transform (includes scale)
+  // to prevent visual artifacts when cards move between containers
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+    transform: CSS.Translate.toString(transform),
+    transition: isDragging ? "none" : (transition ?? "transform 250ms cubic-bezier(0.25, 1, 0.5, 1)"),
   };
 
   const formattedDueDate = card.dueDate
@@ -38,49 +52,56 @@ export function BoardCard({ card, onClick, isDragOverlay }: BoardCardProps) {
       })
     : null;
 
+  const assignee = card.assigneeId ? membersMap?.get(card.assigneeId) : undefined;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
+      {...attributes}
+      {...listeners}
       className={cn(
-        "group flex flex-col rounded-md border bg-card shadow-sm transition-shadow hover:shadow-md",
-        isDragging && "opacity-50",
-        isDragOverlay && "rotate-2 shadow-lg"
+        "group flex cursor-grab flex-col rounded-lg border shadow-sm transition-shadow duration-200 hover:-translate-y-0.5 hover:shadow-lg active:cursor-grabbing",
+        isDragging
+          ? "rounded-lg border-2 border-dashed border-primary/30 bg-primary/5 opacity-100 shadow-none *:invisible"
+          : "bg-card",
+        isDragOverlay && "cursor-grabbing rotate-2 shadow-xl ring-2 ring-primary/20"
       )}
     >
-      {card.coverColor && (
+      {card.coverImage ? (
+        <img
+          src={card.coverImage}
+          alt=""
+          className="h-32 w-full rounded-t-md object-cover"
+        />
+      ) : card.coverColor ? (
         <div
-          className="h-2 w-full rounded-t-md"
+          className="h-8 w-full rounded-t-md"
           style={{ backgroundColor: card.coverColor }}
         />
-      )}
-      <div className="flex items-start gap-1.5 p-2.5">
-      <button
-        {...attributes}
-        {...listeners}
-        className="mt-0.5 shrink-0 cursor-grab text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing"
-      >
-        <GripVertical className="h-4 w-4" />
-      </button>
-
-      <div className="min-w-0 flex-1 cursor-pointer" onClick={onClick}>
+      ) : null}
+      <div className="p-2.5" onClick={onClick}>
         <p className="text-sm font-medium leading-snug">{card.title}</p>
 
-        {(card.labels?.length || formattedDueDate || (card.checklistItems && card.checklistItems.length > 0)) && (
+        {(card.labels?.length || card.description || formattedDueDate || (card.checklistItems && card.checklistItems.length > 0) || assignee) && (
           <div className="mt-1.5 flex flex-wrap items-center gap-1">
             {card.labels?.map((label, i) => (
               <Badge
                 key={i}
                 variant="outline"
-                className="h-5 px-1.5 text-[10px]"
+                className="h-5 border-0 px-1.5 text-[10px] text-white"
                 style={{
-                  borderColor: label.color,
-                  color: label.color,
+                  backgroundColor: label.color,
                 }}
               >
                 {label.name}
               </Badge>
             ))}
+            {card.description && (
+              <span className="flex items-center text-[11px] text-muted-foreground">
+                <AlignLeft className="h-3 w-3" />
+              </span>
+            )}
             {card.checklistItems && card.checklistItems.length > 0 && (
               <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                 <CheckSquare className="h-3 w-3" />
@@ -94,9 +115,16 @@ export function BoardCard({ card, onClick, isDragOverlay }: BoardCardProps) {
                 {formattedDueDate}
               </span>
             )}
+            {assignee && (
+              <Avatar className="ml-auto h-6 w-6 shrink-0">
+                {assignee.imageUrl && <AvatarImage src={assignee.imageUrl} />}
+                <AvatarFallback className="text-[10px]">
+                  {assignee.name[0]?.toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            )}
           </div>
         )}
-      </div>
       </div>
     </div>
   );

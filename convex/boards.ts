@@ -47,6 +47,7 @@ export const update = mutation({
     title: v.optional(v.string()),
     icon: v.optional(v.string()),
     description: v.optional(v.string()),
+    backgroundColor: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedUser(ctx);
@@ -62,6 +63,7 @@ export const update = mutation({
     if (args.title !== undefined) updates.title = args.title;
     if (args.icon !== undefined) updates.icon = args.icon;
     if (args.description !== undefined) updates.description = args.description;
+    if (args.backgroundColor !== undefined) updates.backgroundColor = args.backgroundColor;
 
     await ctx.db.patch(args.id, updates);
 

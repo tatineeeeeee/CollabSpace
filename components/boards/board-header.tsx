@@ -9,15 +9,44 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { IconPicker } from "@/components/shared/icon-picker";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import { ArrowLeft, Menu, MoreHorizontal, Smile, Trash, X } from "lucide-react";
+import { ArrowLeft, Menu, MoreHorizontal, Paintbrush, Smile, Trash, X } from "lucide-react";
 import { useSidebarStore } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Doc } from "@/convex/_generated/dataModel";
+
+const BOARD_COLORS = [
+  { label: "Blue", value: "#0079bf" },
+  { label: "Purple", value: "#89609e" },
+  { label: "Green", value: "#519839" },
+  { label: "Orange", value: "#d29034" },
+  { label: "Red", value: "#b04632" },
+  { label: "Pink", value: "#cd5a91" },
+  { label: "Teal", value: "#00897b" },
+  { label: "Sky", value: "#00aecc" },
+  { label: "Lime", value: "#838c00" },
+  { label: "Slate", value: "#505f79" },
+] as const;
+
+const BOARD_GRADIENTS = [
+  { label: "Hyper", value: "linear-gradient(225deg, #ff3cac 0%, #784ba0 50%, #2b86c5 100%)" },
+  { label: "Oceanic", value: "linear-gradient(135deg, #0093e9 0%, #80d0c7 100%)" },
+  { label: "Sunset Vibes", value: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)" },
+  { label: "Northern Lights", value: "linear-gradient(135deg, #00c6fb 0%, #005bea 50%, #a855f7 100%)" },
+  { label: "Sublime", value: "linear-gradient(135deg, #fc5c7d 0%, #6a82fb 100%)" },
+  { label: "Emerald", value: "linear-gradient(135deg, #0cebeb 0%, #20e3b2 50%, #29ffc6 100%)" },
+  { label: "Flare", value: "linear-gradient(135deg, #f12711 0%, #f5af19 100%)" },
+  { label: "Midnight", value: "linear-gradient(135deg, #232526 0%, #414345 100%)" },
+  { label: "Lavender", value: "linear-gradient(135deg, #c471f5 0%, #fa71cd 100%)" },
+  { label: "Deep Sea", value: "linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%)" },
+] as const;
 
 interface BoardHeaderProps {
   board: Doc<"boards">;
@@ -89,7 +118,7 @@ export function BoardHeader({ board }: BoardHeaderProps) {
   };
 
   return (
-    <div className="flex flex-col border-b">
+    <div className={cn("flex flex-col border-b", board.backgroundColor && "border-white/20 bg-black/20 text-white")}>
       <div className="flex items-center gap-3 px-4 py-2">
         <Button
           variant="ghost"
@@ -145,7 +174,8 @@ export function BoardHeader({ board }: BoardHeaderProps) {
         onBlur={handleTitleSubmit}
         onKeyDown={handleTitleKeyDown}
         className={cn(
-          "min-w-0 flex-1 bg-transparent text-lg font-semibold outline-none placeholder:text-muted-foreground/50"
+          "min-w-0 flex-1 bg-transparent text-lg font-semibold outline-none placeholder:text-muted-foreground/50",
+          board.backgroundColor && "text-white placeholder:text-white/50"
         )}
         placeholder="Untitled Board"
       />
@@ -158,6 +188,54 @@ export function BoardHeader({ board }: BoardHeaderProps) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <Paintbrush className="mr-2 h-4 w-4" />
+              Background
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-56 p-3">
+              <p className="mb-1.5 text-xs font-medium text-muted-foreground">Colors</p>
+              <div className="grid grid-cols-5 gap-1.5">
+                {BOARD_COLORS.map((bg) => (
+                  <button
+                    key={bg.label}
+                    title={bg.label}
+                    className={cn(
+                      "h-8 w-full rounded-md transition-all hover:scale-110 hover:ring-2 hover:ring-primary/50",
+                      board.backgroundColor === bg.value && "ring-2 ring-primary"
+                    )}
+                    style={{ background: bg.value }}
+                    onClick={() => update({ id: board._id, backgroundColor: bg.value })}
+                  />
+                ))}
+              </div>
+              <p className="mb-1.5 mt-3 text-xs font-medium text-muted-foreground">Gradients</p>
+              <div className="grid grid-cols-5 gap-1.5">
+                {BOARD_GRADIENTS.map((bg) => (
+                  <button
+                    key={bg.label}
+                    title={bg.label}
+                    className={cn(
+                      "h-8 w-full rounded-md transition-all hover:scale-110 hover:ring-2 hover:ring-primary/50",
+                      board.backgroundColor === bg.value && "ring-2 ring-primary"
+                    )}
+                    style={{ background: bg.value }}
+                    onClick={() => update({ id: board._id, backgroundColor: bg.value })}
+                  />
+                ))}
+              </div>
+              {board.backgroundColor && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2 h-7 w-full text-xs"
+                  onClick={() => update({ id: board._id, backgroundColor: "" })}
+                >
+                  Remove background
+                </Button>
+              )}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
           <ConfirmDialog
             onConfirm={handleArchive}
             title="Archive this board?"
@@ -180,7 +258,10 @@ export function BoardHeader({ board }: BoardHeaderProps) {
           onFocus={() => setLocalDesc(description)}
           onBlur={handleDescSubmit}
           onKeyDown={handleDescKeyDown}
-          className="w-full bg-transparent text-sm text-muted-foreground outline-none placeholder:text-muted-foreground/50"
+          className={cn(
+            "w-full bg-transparent text-sm text-muted-foreground outline-none placeholder:text-muted-foreground/50",
+            board.backgroundColor && "text-white/70 placeholder:text-white/40"
+          )}
           placeholder="Add a description..."
         />
       </div>

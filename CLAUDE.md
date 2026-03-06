@@ -125,6 +125,9 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 - Use `@dnd-kit/sortable` for sortable lists (columns and cards)
 - Integer-based `order` field for positioning
 - On drag end: compute new order values and call Convex reorder mutation
+- **Optimistic local state during drag** — snapshot cards into `localCards` state on drag start, manipulate locally during drag (cross-list moves), and keep alive until server confirms the mutation via `useQuery` update. Never clear `localCards` before the mutation round-trips; clearing early causes snap-back because the UI falls back to stale server data.
+- **Cross-container drop animation** — use `useState` (not `useRef`) for the `movedToNewList` flag that controls `DragOverlay`'s `dropAnimation` prop. Refs read during render are cached by the React Compiler and return stale values. Set `dropAnimation={null}` for cross-list moves to prevent snap-back animation.
+- **Clear optimistic state with `useEffectEvent`** — watch `cards` (from `useQuery`) in a `useEffect`; when it changes and no drag is active, clear `localCards` and reset `movedToNewList`. Uses `useEffectEvent` to read latest state without violating the "no setState in effect" rule.
 
 ### Documents (Editor)
 - Tiptap editor with extensions: StarterKit, Placeholder, TaskList, TaskItem, Link, Highlight, TextAlign, Underline, Callout (custom), SlashCommand
@@ -287,6 +290,7 @@ Required in `.env.local`:
 - **`useQuery()` returns `undefined` while loading** — Always handle the `undefined` state explicitly (show skeletons). Use `"skip"` as the second argument to conditionally skip a query when args aren't ready: `useQuery(api.foo.bar, id ? { id } : "skip")`.
 - **Auto-create user records in mutations** — The Clerk webhook may not have fired yet when a new user first interacts with the app. Mutations like `workspaces:create` should auto-insert a user record using `identity.name`, `identity.email`, and `identity.pictureUrl` if the user doesn't exist in the `users` table.
 - **Use `internalMutation` for server-only operations** — Functions called from webhooks or other server-side code should use `internalMutation`/`internalQuery` so they can't be called from the client.
+- **Convex `useMutation` is NOT optimistic by default** — `useQuery` results only update after the server confirms the mutation. If you maintain local optimistic state (e.g., `localCards` during drag-and-drop), do NOT clear it before `await mutation()` returns AND the `useQuery` subscription fires with updated data. Clearing early causes the UI to flash back to stale server state.
 
 ### React 19.2 / HTML
 - **`<div>` inside `<p>` causes hydration errors** — shadcn `<Skeleton>` renders as a `<div>`. Never put it inside a `<p>` tag. Use a `<div>` wrapper instead when content may include block-level elements.
@@ -300,7 +304,7 @@ Required in `.env.local`:
   // ❌ Wrong: setState directly in effect
   useEffect(() => { setSaveStatus("saving"); }, [data]);
   ```
-- **Never read/write refs during render** — Only access `ref.current` inside effects and event handlers. The compiler's `refs` rule enforces this.
+- **Never read/write refs during render** — Only access `ref.current` inside effects and event handlers. The compiler's `refs` rule enforces this. If a ref value must influence JSX output (e.g., a prop like `dropAnimation`), convert it to `useState` instead — the compiler may cache stale ref values read during render.
 - **Never call impure functions in `useMemo`** — `Date.now()`, `new Date()`, `Math.random()` produce unstable results. Compute outside the memo and pass as variables.
 - **Use `useState` initializer for derived initial values** — Instead of computing initial state in a `useEffect` (which triggers an extra render), pass a function to `useState(() => computeValue())`. Example: computing initial word count from Tiptap JSON.
 - **zustand `persist` middleware** — Use for UI state that should survive page refreshes (e.g., active workspace ID, sidebar collapsed). Store name must be unique: `{ name: "collabspace-workspace" }`. Use `partialize` to exclude transient state like `mobileOpen`.

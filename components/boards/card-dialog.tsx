@@ -29,7 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import { Trash, X, CalendarIcon, User, Plus, CheckSquare } from "lucide-react";
+import { ImageIcon, Trash, X, CalendarIcon, User, Plus, CheckSquare } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useDebounce } from "@/hooks/use-debounce";
 import { toast } from "sonner";
@@ -104,6 +104,7 @@ function CardDialogContent({
   const [coverColor, setCoverColor] = useState<string | undefined>(
     card.coverColor
   );
+  const [coverImage, setCoverImage] = useState(card.coverImage ?? "");
 
   // Debounce description saves
   const debouncedDescription = useDebounce(description, 500);
@@ -182,6 +183,16 @@ function CardDialogContent({
     await updateCard({ id: card._id, coverColor: color ?? "" });
   };
 
+  const handleSetCoverImage = async () => {
+    const trimmed = coverImage.trim();
+    await updateCard({ id: card._id, coverImage: trimmed || "" });
+  };
+
+  const handleRemoveCoverImage = async () => {
+    setCoverImage("");
+    await updateCard({ id: card._id, coverImage: "" });
+  };
+
   const handleArchive = async () => {
     try {
       await archiveCard({ id: card._id });
@@ -249,6 +260,45 @@ function CardDialogContent({
             </button>
           )}
         </div>
+      </div>
+
+      {/* Cover Image */}
+      <div className="flex flex-col gap-1.5">
+        <Label className="text-xs text-muted-foreground">Cover image</Label>
+        <div className="flex gap-2">
+          <Input
+            value={coverImage}
+            onChange={(e) => setCoverImage(e.target.value)}
+            placeholder="https://images.unsplash.com/..."
+            className="h-8 text-sm"
+          />
+          <Button
+            size="sm"
+            className="h-8"
+            onClick={handleSetCoverImage}
+            disabled={!coverImage.trim()}
+          >
+            <ImageIcon className="mr-1.5 h-3.5 w-3.5" />
+            Set
+          </Button>
+        </div>
+        {card.coverImage && (
+          <div className="relative">
+            <img
+              src={card.coverImage}
+              alt=""
+              className="h-24 w-full rounded-md object-cover"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1 h-6 w-6 bg-background/80 hover:bg-background"
+              onClick={handleRemoveCoverImage}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Checklist */}

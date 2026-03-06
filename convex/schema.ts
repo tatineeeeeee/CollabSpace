@@ -58,6 +58,7 @@ export default defineSchema({
     userId: v.id("users"),
     icon: v.optional(v.string()),
     description: v.optional(v.string()),
+    backgroundColor: v.optional(v.string()),
     isArchived: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -101,6 +102,7 @@ export default defineSchema({
       )
     ),
     coverColor: v.optional(v.string()),
+    coverImage: v.optional(v.string()),
     isArchived: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),

@@ -32,15 +32,31 @@ import {
   Highlighter,
   Code,
   Link,
+  ImageIcon,
+  Palette,
+  Table,
 } from "lucide-react";
 
 interface EditorToolbarProps {
   editor: Editor;
 }
 
+const TEXT_COLORS = [
+  { name: "Default", color: "" },
+  { name: "Red", color: "#ef4444" },
+  { name: "Orange", color: "#f97316" },
+  { name: "Yellow", color: "#eab308" },
+  { name: "Green", color: "#22c55e" },
+  { name: "Blue", color: "#3b82f6" },
+  { name: "Purple", color: "#a855f7" },
+  { name: "Pink", color: "#ec4899" },
+  { name: "Gray", color: "#6b7280" },
+];
+
 export function EditorToolbar({ editor }: EditorToolbarProps) {
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
+  const [colorOpen, setColorOpen] = useState(false);
 
   const getBlockType = () => {
     if (editor.isActive("heading", { level: 1 })) return "h1";
@@ -260,6 +276,80 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
               Remove link
             </Button>
           )}
+        </PopoverContent>
+      </Popover>
+
+      <Separator orientation="vertical" className="mx-1 h-6" />
+
+      {/* Image */}
+      <Toggle
+        size="sm"
+        pressed={false}
+        onPressedChange={() => {
+          const url = window.prompt("Image URL");
+          if (url) editor.chain().focus().setImage({ src: url }).run();
+        }}
+        aria-label="Image"
+      >
+        <ImageIcon className="h-4 w-4" />
+      </Toggle>
+
+      {/* Table */}
+      <Toggle
+        size="sm"
+        pressed={editor.isActive("table")}
+        onPressedChange={() => {
+          if (editor.isActive("table")) {
+            editor.chain().focus().deleteTable().run();
+          } else {
+            editor
+              .chain()
+              .focus()
+              .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+              .run();
+          }
+        }}
+        aria-label="Table"
+      >
+        <Table className="h-4 w-4" />
+      </Toggle>
+
+      {/* Text Color */}
+      <Popover open={colorOpen} onOpenChange={setColorOpen}>
+        <PopoverTrigger asChild>
+          <Toggle
+            size="sm"
+            pressed={!!editor.getAttributes("textStyle").color}
+            onPressedChange={() => setColorOpen(!colorOpen)}
+            aria-label="Text color"
+          >
+            <Palette className="h-4 w-4" />
+          </Toggle>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-2" align="start">
+          <div className="grid grid-cols-5 gap-1">
+            {TEXT_COLORS.map((tc) => (
+              <button
+                type="button"
+                key={tc.name}
+                title={tc.name}
+                onClick={() => {
+                  if (tc.color) {
+                    editor.chain().focus().setColor(tc.color).run();
+                  } else {
+                    editor.chain().focus().unsetColor().run();
+                  }
+                  setColorOpen(false);
+                }}
+                className="flex h-7 w-7 items-center justify-center rounded-md border transition-colors hover:scale-110"
+                style={{ backgroundColor: tc.color || undefined }}
+              >
+                {!tc.color && (
+                  <span className="text-xs text-muted-foreground">A</span>
+                )}
+              </button>
+            ))}
+          </div>
         </PopoverContent>
       </Popover>
     </div>

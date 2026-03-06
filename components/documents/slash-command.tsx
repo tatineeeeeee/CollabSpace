@@ -25,6 +25,9 @@ import {
   Code,
   Minus,
   Info,
+  ImageIcon,
+  Table as TableIcon,
+  ChevronRight,
   type LucideIcon,
 } from "lucide-react";
 
@@ -112,6 +115,36 @@ const SLASH_COMMANDS: SlashCommandItem[] = [
     icon: Info,
     command: (editor, range) =>
       editor.chain().focus().deleteRange(range).setCallout().run(),
+  },
+  {
+    title: "Image",
+    description: "Embed an image from URL",
+    icon: ImageIcon,
+    command: (editor, range) => {
+      const url = window.prompt("Image URL");
+      if (url) {
+        editor.chain().focus().deleteRange(range).setImage({ src: url }).run();
+      }
+    },
+  },
+  {
+    title: "Table",
+    description: "Insert a table",
+    icon: TableIcon,
+    command: (editor, range) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+        .run(),
+  },
+  {
+    title: "Toggle",
+    description: "Collapsible content block",
+    icon: ChevronRight,
+    command: (editor, range) =>
+      editor.chain().focus().deleteRange(range).setToggle().run(),
   },
 ];
 

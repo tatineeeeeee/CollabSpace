@@ -61,11 +61,16 @@ export default function BoardDetailPage() {
     return <ArchivedBanner boardId={boardId} title={board.title} />;
   }
 
+  const hasBackground = !!board.backgroundColor;
+
   return (
-    <div className="flex h-full flex-col">
+    <div
+      className="flex h-full flex-col transition-[background] duration-300"
+      style={hasBackground ? { background: board.backgroundColor } : undefined}
+    >
       <BoardHeader board={board} />
       <div className="flex-1 overflow-hidden">
-        <KanbanBoard boardId={boardId} workspaceId={board.workspaceId} />
+        <KanbanBoard boardId={boardId} workspaceId={board.workspaceId} hasBackground={hasBackground} />
       </div>
     </div>
   );

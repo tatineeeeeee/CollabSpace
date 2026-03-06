@@ -72,6 +72,7 @@ export const update = mutation({
       )
     ),
     coverColor: v.optional(v.string()),
+    coverImage: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedUser(ctx);
@@ -94,6 +95,7 @@ export const update = mutation({
     if (args.assigneeId !== undefined) updates.assigneeId = args.assigneeId;
     if (args.checklistItems !== undefined) updates.checklistItems = args.checklistItems;
     if (args.coverColor !== undefined) updates.coverColor = args.coverColor;
+    if (args.coverImage !== undefined) updates.coverImage = args.coverImage;
 
     await ctx.db.patch(args.id, updates);
 

@@ -6,14 +6,16 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
 
 interface AddListFormProps {
   boardId: Id<"boards">;
+  hasBackground?: boolean;
 }
 
-export function AddListForm({ boardId }: AddListFormProps) {
+export function AddListForm({ boardId, hasBackground }: AddListFormProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -49,7 +51,12 @@ export function AddListForm({ boardId }: AddListFormProps) {
           setIsEditing(true);
           setTimeout(() => inputRef.current?.focus(), 0);
         }}
-        className="flex h-10 w-72 shrink-0 items-center gap-2 rounded-lg border border-dashed px-3 text-sm text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+        className={cn(
+          "flex h-10 w-72 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-medium transition-colors",
+          hasBackground
+            ? "bg-white/25 text-white backdrop-blur-sm hover:bg-white/35 dark:bg-white/15 dark:hover:bg-white/25"
+            : "border border-dashed text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+        )}
       >
         <Plus className="h-4 w-4" />
         Add list
@@ -58,7 +65,7 @@ export function AddListForm({ boardId }: AddListFormProps) {
   }
 
   return (
-    <div className="w-72 shrink-0 rounded-lg border bg-card p-2">
+    <div className="w-72 shrink-0 rounded-xl bg-background/80 p-2 shadow-sm backdrop-blur-sm dark:bg-card/80">
       <Input
         ref={inputRef}
         value={title}

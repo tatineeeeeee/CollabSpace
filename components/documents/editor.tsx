@@ -11,6 +11,13 @@ import Link from "@tiptap/extension-link";
 import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
+import Image from "@tiptap/extension-image";
+import { TextStyle } from "@tiptap/extension-text-style";
+import { Color } from "@tiptap/extension-color";
+import { Table } from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableCell from "@tiptap/extension-table-cell";
+import TableHeader from "@tiptap/extension-table-header";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -27,6 +34,7 @@ import { EditorToolbar } from "./editor-toolbar";
 import { EditorFooter } from "./editor-footer";
 import { SlashCommand } from "./slash-command";
 import { Callout } from "./callout-extension";
+import { ToggleDetails, ToggleSummary } from "./toggle-extension";
 import type { Id } from "@/convex/_generated/dataModel";
 
 interface EditorProps {
@@ -48,9 +56,10 @@ export function Editor({
     if (!initialContent) return 0;
     try {
       const json = JSON.parse(initialContent);
-      const extractText = (node: { text?: string; content?: unknown[] }): string => {
-        if (typeof node?.text === "string") return node.text;
-        if (Array.isArray(node?.content)) return node.content.map(extractText).join(" ");
+      const extractText = (node: unknown): string => {
+        const n = node as { text?: string; content?: unknown[] };
+        if (typeof n?.text === "string") return n.text;
+        if (Array.isArray(n?.content)) return n.content.map(extractText).join(" ");
         return "";
       };
       const text = extractText(json);
@@ -80,7 +89,19 @@ export function Editor({
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Underline,
+      Image.configure({
+        allowBase64: true,
+        HTMLAttributes: { class: "rounded-lg max-w-full" },
+      }),
+      TextStyle,
+      Color,
+      Table.configure({ resizable: true }),
+      TableRow,
+      TableCell,
+      TableHeader,
       Callout,
+      ToggleDetails,
+      ToggleSummary,
       SlashCommand,
     ],
     content: initialContent ? JSON.parse(initialContent) : undefined,

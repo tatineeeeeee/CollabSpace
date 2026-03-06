@@ -29,6 +29,7 @@ interface BoardListProps {
   cards: Doc<"cards">[];
   onCardClick: (card: Doc<"cards">) => void;
   isDragOverlay?: boolean;
+  membersMap?: Map<string, { name: string; imageUrl?: string }>;
 }
 
 export function BoardList({
@@ -36,6 +37,7 @@ export function BoardList({
   cards,
   onCardClick,
   isDragOverlay,
+  membersMap,
 }: BoardListProps) {
   const {
     attributes,
@@ -50,8 +52,8 @@ export function BoardList({
   });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+    transform: CSS.Translate.toString(transform),
+    transition: transition ?? "transform 250ms cubic-bezier(0.25, 1, 0.5, 1)",
   };
 
   const updateList = useMutation(api.lists.update);
@@ -124,9 +126,9 @@ export function BoardList({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex w-72 shrink-0 flex-col rounded-lg border bg-muted/50",
+        "flex w-72 shrink-0 flex-col rounded-xl bg-background/80 shadow-sm backdrop-blur-sm dark:bg-card/80",
         isDragging && "opacity-50",
-        isDragOverlay && "rotate-2 shadow-lg"
+        isDragOverlay && "rotate-2 shadow-xl"
       )}
     >
       {/* List header */}
@@ -161,6 +163,15 @@ export function BoardList({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onSelect={() => {
+                setAddingCard(true);
+                setTimeout(() => cardInputRef.current?.focus(), 0);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add card
+            </DropdownMenuItem>
             <ConfirmDialog
               onConfirm={handleRemoveList}
               title="Delete this list?"
@@ -177,20 +188,21 @@ export function BoardList({
       </div>
 
       {/* Cards */}
-      <div className="flex min-h-[2px] flex-1 flex-col gap-1.5 overflow-y-auto px-2 pb-2">
+      <div className="flex max-h-[calc(100vh-220px)] min-h-[2px] flex-col gap-2 overflow-y-auto px-2 pb-2">
         <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
           {cards.map((card) => (
             <BoardCard
               key={card._id}
               card={card}
               onClick={() => onCardClick(card)}
+              membersMap={membersMap}
             />
           ))}
         </SortableContext>
       </div>
 
-      {/* Add card */}
-      <div className="border-t p-2">
+      {/* Add card — stop propagation so DndKit sensors don't swallow clicks */}
+      <div className="p-2 pt-0" onPointerDown={(e) => e.stopPropagation()}>
         {addingCard ? (
           <div>
             <Input
