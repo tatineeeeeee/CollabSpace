@@ -5,7 +5,11 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   document_published: "published",
   board_created: "created",
   board_updated: "updated",
+  board_archived: "archived",
   card_created: "created card in",
   card_moved: "moved card in",
   card_updated: "updated card in",
+  card_archived: "archived card in",
+  list_created: "created list in",
+  list_removed: "removed list from",
 };

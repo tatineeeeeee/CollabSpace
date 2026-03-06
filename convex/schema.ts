@@ -120,9 +120,13 @@ export default defineSchema({
       v.literal("document_published"),
       v.literal("board_created"),
       v.literal("board_updated"),
+      v.literal("board_archived"),
       v.literal("card_created"),
       v.literal("card_moved"),
-      v.literal("card_updated")
+      v.literal("card_updated"),
+      v.literal("card_archived"),
+      v.literal("list_created"),
+      v.literal("list_removed")
     ),
     entityId: v.string(),
     entityTitle: v.string(),

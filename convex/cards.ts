@@ -185,6 +185,15 @@ export const archive = mutation({
     if (!membership) throw new Error("Not a member of this workspace");
 
     await ctx.db.patch(args.id, { isArchived: true, updatedAt: Date.now() });
+
+    await ctx.db.insert("activities", {
+      userId: user._id,
+      workspaceId: board.workspaceId,
+      type: "card_archived",
+      entityId: args.id,
+      entityTitle: card.title,
+      createdAt: Date.now(),
+    });
   },
 });
 
@@ -203,6 +212,16 @@ export const remove = mutation({
 
     const membership = await verifyMembership(ctx, user._id, board.workspaceId);
     if (!membership) throw new Error("Not a member of this workspace");
+
+    await ctx.db.insert("activities", {
+      userId: user._id,
+      workspaceId: board.workspaceId,
+      type: "card_archived",
+      entityId: args.id,
+      entityTitle: card.title,
+      metadata: JSON.stringify({ deleted: true }),
+      createdAt: Date.now(),
+    });
 
     await ctx.db.delete(args.id);
   },

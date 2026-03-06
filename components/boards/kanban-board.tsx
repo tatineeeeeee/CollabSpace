@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import {
   DndContext,
@@ -61,23 +61,21 @@ export function KanbanBoard({ boardId, workspaceId }: KanbanBoardProps) {
   );
 
   // Sort lists by order
-  const sortedLists = useMemo(() => {
-    if (!lists) return [];
-    return [...lists].sort((a, b) => a.order - b.order);
-  }, [lists]);
+  const sortedLists = lists ? [...lists].sort((a, b) => a.order - b.order) : [];
 
-  // Apply filters to cards (date boundaries computed outside useMemo to avoid impure calls)
-  const now = Date.now();
-  const endOfWeek = new Date();
-  endOfWeek.setDate(endOfWeek.getDate() + (7 - endOfWeek.getDay()));
-  endOfWeek.setHours(23, 59, 59, 999);
-  const endOfWeekTs = endOfWeek.getTime();
-  const endOfMonth = new Date();
-  endOfMonth.setMonth(endOfMonth.getMonth() + 1, 0);
-  endOfMonth.setHours(23, 59, 59, 999);
-  const endOfMonthTs = endOfMonth.getTime();
+  // Date boundaries for due-date filtering (useState initializer is pure)
+  const [dateBounds] = useState(() => {
+    const endOfWeek = new Date();
+    endOfWeek.setDate(endOfWeek.getDate() + (7 - endOfWeek.getDay()));
+    endOfWeek.setHours(23, 59, 59, 999);
+    const endOfMonth = new Date();
+    endOfMonth.setMonth(endOfMonth.getMonth() + 1, 0);
+    endOfMonth.setHours(23, 59, 59, 999);
+    return { now: Date.now(), endOfWeekTs: endOfWeek.getTime(), endOfMonthTs: endOfMonth.getTime() };
+  });
 
-  const filteredCards = useMemo(() => {
+  // Apply filters to cards
+  const filteredCards = (() => {
     if (!cards) return null;
 
     const hasFilters =
@@ -102,18 +100,17 @@ export function KanbanBoard({ boardId, workspaceId }: KanbanBoardProps) {
         } else if (!card.dueDate) {
           return false;
         } else {
-          if (filters.dueDateFilter === "overdue" && card.dueDate >= now) return false;
-          if (filters.dueDateFilter === "this_week" && card.dueDate > endOfWeekTs) return false;
-          if (filters.dueDateFilter === "this_month" && card.dueDate > endOfMonthTs) return false;
+          if (filters.dueDateFilter === "overdue" && card.dueDate >= dateBounds.now) return false;
+          if (filters.dueDateFilter === "this_week" && card.dueDate > dateBounds.endOfWeekTs) return false;
+          if (filters.dueDateFilter === "this_month" && card.dueDate > dateBounds.endOfMonthTs) return false;
         }
       }
       return true;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cards, filters]);
+  })();
 
   // Group cards by list, applying any local overrides
-  const cardsByList = useMemo(() => {
+  const cardsByList = (() => {
     if (!filteredCards) return new Map<string, Doc<"cards">[]>();
 
     const map = new Map<string, Doc<"cards">[]>();
@@ -137,7 +134,7 @@ export function KanbanBoard({ boardId, workspaceId }: KanbanBoardProps) {
     }
 
     return map;
-  }, [filteredCards, sortedLists, localCardOverrides]);
+  })();
 
   const listIds = sortedLists.map((l) => l._id);
 

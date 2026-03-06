@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -43,9 +43,9 @@ export default function BoardsPage() {
   const [title, setTitle] = useState("");
   const [creating, setCreating] = useState(false);
 
-  const handleKeyboardNew = useCallback(() => {
+  const handleKeyboardNew = () => {
     setCreateOpen(true);
-  }, []);
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -56,7 +56,7 @@ export default function BoardsPage() {
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyboardNew]);
+  });
 
   const handleCreate = async () => {
     if (!activeWorkspaceId || !title.trim()) return;

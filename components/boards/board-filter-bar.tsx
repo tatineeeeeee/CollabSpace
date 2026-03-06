@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -50,17 +49,15 @@ export function BoardFilterBar({
   const members = useQuery(api.workspaces.getMembers, { workspaceId });
 
   // Extract unique labels from cards
-  const availableLabels = useMemo(() => {
-    const labelMap = new Map<string, { name: string; color: string }>();
-    for (const card of cards) {
-      for (const label of card.labels ?? []) {
-        if (!labelMap.has(label.color)) {
-          labelMap.set(label.color, label);
-        }
+  const labelMap = new Map<string, { name: string; color: string }>();
+  for (const card of cards) {
+    for (const label of card.labels ?? []) {
+      if (!labelMap.has(label.color)) {
+        labelMap.set(label.color, label);
       }
     }
-    return Array.from(labelMap.values());
-  }, [cards]);
+  }
+  const availableLabels = Array.from(labelMap.values());
 
   const activeFilterCount =
     filters.labelColors.length +

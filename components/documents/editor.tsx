@@ -48,8 +48,7 @@ export function Editor({
     if (!initialContent) return 0;
     try {
       const json = JSON.parse(initialContent);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const extractText = (node: any): string => {
+      const extractText = (node: { text?: string; content?: unknown[] }): string => {
         if (typeof node?.text === "string") return node.text;
         if (Array.isArray(node?.content)) return node.content.map(extractText).join(" ");
         return "";

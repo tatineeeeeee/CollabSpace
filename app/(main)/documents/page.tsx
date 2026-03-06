@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -15,7 +15,7 @@ export default function DocumentsPage() {
   const { activeWorkspaceId } = useWorkspaceStore();
   const createDocument = useMutation(api.documents.create);
 
-  const handleCreate = useCallback(async () => {
+  const handleCreate = async () => {
     if (!activeWorkspaceId) return;
 
     try {
@@ -28,7 +28,7 @@ export default function DocumentsPage() {
     } catch {
       toast.error("Failed to create document");
     }
-  }, [activeWorkspaceId, createDocument, router]);
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -40,7 +40,7 @@ export default function DocumentsPage() {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [handleCreate]);
+  });
 
   return (
     <div className="flex h-full items-center justify-center">

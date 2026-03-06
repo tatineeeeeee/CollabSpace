@@ -1,6 +1,5 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
 import { getAuthenticatedUser, getOrCreateUser, verifyMembership } from "./lib";
 
 // --- Mutations ---
@@ -65,6 +64,15 @@ export const update = mutation({
     if (args.description !== undefined) updates.description = args.description;
 
     await ctx.db.patch(args.id, updates);
+
+    await ctx.db.insert("activities", {
+      userId: user._id,
+      workspaceId: board.workspaceId,
+      type: "board_updated",
+      entityId: args.id,
+      entityTitle: args.title ?? board.title,
+      createdAt: Date.now(),
+    });
   },
 });
 
@@ -85,10 +93,9 @@ export const archive = mutation({
     await ctx.db.insert("activities", {
       userId: user._id,
       workspaceId: board.workspaceId,
-      type: "board_updated",
+      type: "board_archived",
       entityId: args.id,
       entityTitle: board.title,
-      metadata: JSON.stringify({ archived: true }),
       createdAt: Date.now(),
     });
   },
@@ -106,6 +113,16 @@ export const remove = mutation({
 
     const membership = await verifyMembership(ctx, user._id, board.workspaceId);
     if (!membership) throw new Error("Not a member of this workspace");
+
+    await ctx.db.insert("activities", {
+      userId: user._id,
+      workspaceId: board.workspaceId,
+      type: "board_archived",
+      entityId: args.id,
+      entityTitle: board.title,
+      metadata: JSON.stringify({ deleted: true }),
+      createdAt: Date.now(),
+    });
 
     // Cascade-delete all cards
     const cards = await ctx.db

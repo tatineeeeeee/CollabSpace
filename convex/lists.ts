@@ -35,6 +35,15 @@ export const create = mutation({
       createdAt: Date.now(),
     });
 
+    await ctx.db.insert("activities", {
+      userId: user._id,
+      workspaceId: board.workspaceId,
+      type: "list_created",
+      entityId: listId,
+      entityTitle: args.title.trim() || "Untitled List",
+      createdAt: Date.now(),
+    });
+
     return listId;
   },
 });
@@ -75,6 +84,15 @@ export const remove = mutation({
 
     const membership = await verifyMembership(ctx, user._id, board.workspaceId);
     if (!membership) throw new Error("Not a member of this workspace");
+
+    await ctx.db.insert("activities", {
+      userId: user._id,
+      workspaceId: board.workspaceId,
+      type: "list_removed",
+      entityId: args.id,
+      entityTitle: list.title,
+      createdAt: Date.now(),
+    });
 
     // Cascade-delete all cards in this list
     const cards = await ctx.db

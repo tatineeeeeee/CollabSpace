@@ -10,6 +10,7 @@ export function ConvexClientProvider({
 }: {
   children: React.ReactNode;
 }) {
+  // Intentional useMemo: ConvexReactClient must be created once; URL may be empty during Next.js build prerender
   const convex = useMemo(() => {
     const url = process.env.NEXT_PUBLIC_CONVEX_URL;
     if (!url) return null;

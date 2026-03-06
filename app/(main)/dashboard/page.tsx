@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
@@ -25,7 +25,6 @@ import {
   ArrowRight,
   Activity,
 } from "lucide-react";
-import Link from "next/link";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -84,17 +83,11 @@ export default function DashboardPage() {
   const createDocument = useMutation(api.documents.create);
   const createBoard = useMutation(api.boards.create);
 
-  const recentDocuments = useMemo(() => {
-    if (!documents || !Array.isArray(documents)) return [];
-    return documents;
-  }, [documents]);
+  const recentDocuments = documents && Array.isArray(documents) ? documents : [];
 
-  const recentBoards = useMemo(() => {
-    if (!boards || !Array.isArray(boards)) return [];
-    return [...boards]
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-      .slice(0, 5);
-  }, [boards]);
+  const recentBoards = boards && Array.isArray(boards)
+    ? [...boards].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5)
+    : [];
 
   const handleNewDocument = async () => {
     if (!activeWorkspaceId) return;
