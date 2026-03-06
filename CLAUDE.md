@@ -21,7 +21,7 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 - `app/(auth)/` — Clerk sign-in / sign-up with split-screen brand layout
 - `app/(main)/` — Authenticated app (protected by Clerk middleware)
 - `app/(public)/` — Public routes (document preview with OG meta tags)
-- `components/ui/` — shadcn/ui components (do not manually edit, use `npx shadcn@latest add`)
+- `components/ui/` — shadcn/ui components (do not manually edit, use `bunx shadcn@latest add`)
 - `components/providers/` — Context providers (Convex, Clerk, Theme)
 - `components/documents/` — Document editor, toolbar, footer, list, cover image, trash
 - `components/boards/` — Kanban board, columns, cards, card dialog, drag-and-drop
@@ -33,11 +33,12 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 
 ## Commands
 
-- `npm run dev` — Start Next.js dev server
+- `bun run dev` — Start Next.js dev server
 - `npx convex dev` — Start Convex dev server (run alongside Next.js)
-- `npm run build` — Production build
-- `npm run lint` — Run ESLint
+- `bun run build` — Production build
+- `bun run lint` — Run ESLint
 - `npx convex deploy` — Deploy Convex to production
+- `npm audit` — Security vulnerability scan (bun lacks built-in audit)
 
 ## Coding Conventions
 
@@ -178,9 +179,9 @@ Required in `.env.local`:
 ## Important Rules
 
 1. Never commit `.env.local` — it is gitignored
-2. Never manually edit files in `components/ui/` — use `npx shadcn@latest add <component>`
+2. Never manually edit files in `components/ui/` — use `bunx shadcn@latest add <component>`
 3. Never manually edit files in `convex/_generated/` — these are auto-generated
-4. Always run `npx convex dev` alongside `npm run dev` during development
+4. Always run `npx convex dev` alongside `bun run dev` during development
 5. Always check auth in Convex functions before accessing data
 6. Always use indexes in Convex queries — never do full table scans
 7. Prefer editing existing files over creating new ones
@@ -262,7 +263,7 @@ Required in `.env.local`:
 - Group imports: React/Next → third-party → local components → local utils → types
 - Use TypeScript `interface` for component props, `type` for unions and utility types
 - Avoid `any` type — use `unknown` and narrow with type guards when needed
-- Run `npm run lint` before committing
+- Run `bun run lint` before committing
 
 ### Git Workflow
 - Write clear commit messages: `feat:`, `fix:`, `refactor:`, `style:`, `docs:`, `chore:`
@@ -307,7 +308,7 @@ Required in `.env.local`:
 
 ### Tailwind v4
 - **`bg-linear-to-*` not `bg-gradient-to-*`** — Tailwind v4 uses the canonical `bg-linear-to-br`, `bg-linear-to-b` etc. instead of the v3 `bg-gradient-to-*` shorthand.
-- **shadcn `--overwrite` flag** — When adding shadcn components that already exist, use `npx shadcn@latest add <component> --overwrite` (not `-y`, which triggers interactive prompts).
+- **shadcn `--overwrite` flag** — When adding shadcn components that already exist, use `bunx shadcn@latest add <component> --overwrite` (not `-y`, which triggers interactive prompts).
 
 ### Landing Page & Auth
 - **Never use `<SignInButton mode="modal">`** in the navbar — it opens a Clerk popup and bypasses the custom auth page. Use `<Link href="/sign-in">` instead.
