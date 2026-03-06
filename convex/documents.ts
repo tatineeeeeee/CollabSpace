@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { getAuthenticatedUser, getOrCreateUser, verifyMembership } from "./lib";
+import { getAuthenticatedUser, getOrCreateUser, verifyMembership, logActivity } from "./lib";
 
 // --- Mutations ---
 
@@ -10,6 +10,8 @@ export const create = mutation({
     title: v.string(),
     workspaceId: v.id("workspaces"),
     parentDocumentId: v.optional(v.id("documents")),
+    content: v.optional(v.string()),
+    icon: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getOrCreateUser(ctx);
@@ -17,8 +19,13 @@ export const create = mutation({
     const membership = await verifyMembership(ctx, user._id, args.workspaceId);
     if (!membership) throw new Error("Not a member of this workspace");
 
+    if (args.title.length > 500) throw new Error("Title must be under 500 characters");
+    if (args.content && args.content.length > 500_000) throw new Error("Content too large");
+
     const documentId = await ctx.db.insert("documents", {
       title: args.title.trim() || "Untitled",
+      content: args.content,
+      icon: args.icon,
       workspaceId: args.workspaceId,
       userId: user._id,
       parentDocumentId: args.parentDocumentId,
@@ -28,13 +35,11 @@ export const create = mutation({
       updatedAt: Date.now(),
     });
 
-    await ctx.db.insert("activities", {
-      userId: user._id,
+    await logActivity(ctx, user, {
       workspaceId: args.workspaceId,
       type: "document_created",
       entityId: documentId,
       entityTitle: args.title.trim() || "Untitled",
-      createdAt: Date.now(),
     });
 
     return documentId;
@@ -61,20 +66,18 @@ export const update = mutation({
     const membership = await verifyMembership(ctx, user._id, document.workspaceId);
     if (!membership) throw new Error("Not a member of this workspace");
 
-    const updates: Record<string, unknown> = { updatedAt: Date.now() };
+    const updates: Record<string, unknown> = { updatedAt: Date.now(), lastEditedBy: user._id };
     if (args.title !== undefined) updates.title = args.title;
     if (args.icon !== undefined) updates.icon = args.icon;
     if (args.coverImage !== undefined) updates.coverImage = args.coverImage;
 
     await ctx.db.patch(args.id, updates);
 
-    await ctx.db.insert("activities", {
-      userId: user._id,
+    await logActivity(ctx, user, {
       workspaceId: document.workspaceId,
       type: "document_updated",
       entityId: args.id,
       entityTitle: args.title ?? document.title,
-      createdAt: Date.now(),
     });
   },
 });
@@ -97,8 +100,11 @@ export const updateContent = mutation({
     const membership = await verifyMembership(ctx, user._id, document.workspaceId);
     if (!membership) throw new Error("Not a member of this workspace");
 
+    if (args.content.length > 500_000) throw new Error("Content too large");
+
     await ctx.db.patch(args.id, {
       content: args.content,
+      lastEditedBy: user._id,
       updatedAt: Date.now(),
     });
   },
@@ -134,13 +140,11 @@ export const archive = mutation({
     await ctx.db.patch(args.id, { isArchived: true });
     await recursiveArchive(args.id);
 
-    await ctx.db.insert("activities", {
-      userId: user._id,
+    await logActivity(ctx, user, {
       workspaceId: document.workspaceId,
       type: "document_archived",
       entityId: args.id,
       entityTitle: document.title,
-      createdAt: Date.now(),
     });
   },
 });
@@ -251,17 +255,51 @@ export const togglePublish = mutation({
       updatedAt: Date.now(),
     });
 
-    await ctx.db.insert("activities", {
-      userId: user._id,
+    await logActivity(ctx, user, {
       workspaceId: document.workspaceId,
       type: "document_published",
       entityId: args.id,
       entityTitle: document.title,
       metadata: JSON.stringify({ published: newPublished }),
-      createdAt: Date.now(),
     });
 
     return newPublished;
+  },
+});
+
+export const duplicate = mutation({
+  args: { id: v.id("documents") },
+  handler: async (ctx, args) => {
+    const user = await getOrCreateUser(ctx);
+
+    const doc = await ctx.db.get(args.id);
+    if (!doc) throw new Error("Document not found");
+
+    const membership = await verifyMembership(ctx, user._id, doc.workspaceId);
+    if (!membership) throw new Error("Not a member of this workspace");
+
+    const newId = await ctx.db.insert("documents", {
+      title: `${doc.title} (copy)`,
+      content: doc.content,
+      workspaceId: doc.workspaceId,
+      userId: user._id,
+      parentDocumentId: doc.parentDocumentId,
+      icon: doc.icon,
+      coverImage: doc.coverImage,
+      isArchived: false,
+      isPublished: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    await logActivity(ctx, user, {
+      workspaceId: doc.workspaceId,
+      type: "document_created",
+      entityId: newId,
+      entityTitle: `${doc.title} (copy)`,
+    });
+
+    return newId;
   },
 });
 
@@ -311,7 +349,13 @@ export const getById = query({
     const membership = await verifyMembership(ctx, user._id, document.workspaceId);
     if (!membership) return null;
 
-    return document;
+    let lastEditedByName: string | undefined;
+    if (document.lastEditedBy) {
+      const editor = await ctx.db.get(document.lastEditedBy);
+      if (editor) lastEditedByName = editor.name;
+    }
+
+    return { ...document, lastEditedByName };
   },
 });
 
@@ -330,12 +374,13 @@ export const search = query({
     const membership = await verifyMembership(ctx, user._id, args.workspaceId);
     if (!membership) return [];
 
+    // Limit initial fetch to avoid scanning entire table
     const documents = await ctx.db
       .query("documents")
       .withIndex("by_workspace_archived", (q) =>
         q.eq("workspaceId", args.workspaceId).eq("isArchived", false)
       )
-      .collect();
+      .take(500);
 
     const searchTerm = args.query.toLowerCase();
     return documents
@@ -427,12 +472,13 @@ export const getRecent = query({
 
     const limit = args.limit ?? 10;
 
+    // Fetch a reasonable amount and sort client-side
     const documents = await ctx.db
       .query("documents")
       .withIndex("by_workspace_archived", (q) =>
         q.eq("workspaceId", args.workspaceId).eq("isArchived", false)
       )
-      .collect();
+      .take(200);
 
     return documents
       .sort((a, b) => b.updatedAt - a.updatedAt)

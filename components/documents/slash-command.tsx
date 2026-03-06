@@ -28,6 +28,7 @@ import {
   ImageIcon,
   Table as TableIcon,
   ChevronRight,
+  TableOfContents as TableOfContentsIcon,
   type LucideIcon,
 } from "lucide-react";
 
@@ -145,6 +146,18 @@ const SLASH_COMMANDS: SlashCommandItem[] = [
     icon: ChevronRight,
     command: (editor, range) =>
       editor.chain().focus().deleteRange(range).setToggle().run(),
+  },
+  {
+    title: "Table of Contents",
+    description: "Auto-generated from headings",
+    icon: TableOfContentsIcon,
+    command: (editor, range) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: "tableOfContents" })
+        .run(),
   },
 ];
 

@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getAuthenticatedUser, getOrCreateUser, verifyMembership } from "./lib";
+import { getAuthenticatedUser, getOrCreateUser, verifyMembership, logActivity } from "./lib";
 
 // --- Mutations ---
 
@@ -28,13 +28,11 @@ export const create = mutation({
       updatedAt: Date.now(),
     });
 
-    await ctx.db.insert("activities", {
-      userId: user._id,
+    await logActivity(ctx, user, {
       workspaceId: args.workspaceId,
       type: "board_created",
       entityId: boardId,
       entityTitle: args.title.trim() || "Untitled Board",
-      createdAt: Date.now(),
     });
 
     return boardId;
@@ -67,13 +65,11 @@ export const update = mutation({
 
     await ctx.db.patch(args.id, updates);
 
-    await ctx.db.insert("activities", {
-      userId: user._id,
+    await logActivity(ctx, user, {
       workspaceId: board.workspaceId,
       type: "board_updated",
       entityId: args.id,
       entityTitle: args.title ?? board.title,
-      createdAt: Date.now(),
     });
   },
 });
@@ -92,13 +88,11 @@ export const archive = mutation({
 
     await ctx.db.patch(args.id, { isArchived: true, updatedAt: Date.now() });
 
-    await ctx.db.insert("activities", {
-      userId: user._id,
+    await logActivity(ctx, user, {
       workspaceId: board.workspaceId,
       type: "board_archived",
       entityId: args.id,
       entityTitle: board.title,
-      createdAt: Date.now(),
     });
   },
 });
@@ -116,14 +110,12 @@ export const remove = mutation({
     const membership = await verifyMembership(ctx, user._id, board.workspaceId);
     if (!membership) throw new Error("Not a member of this workspace");
 
-    await ctx.db.insert("activities", {
-      userId: user._id,
+    await logActivity(ctx, user, {
       workspaceId: board.workspaceId,
       type: "board_archived",
       entityId: args.id,
       entityTitle: board.title,
       metadata: JSON.stringify({ deleted: true }),
-      createdAt: Date.now(),
     });
 
     // Cascade-delete all cards

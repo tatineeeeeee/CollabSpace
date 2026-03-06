@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
 import type { Id } from "@/convex/_generated/dataModel";
+import { isSafeCoverValue } from "@/lib/utils";
 
 const Editor = dynamic(
   () =>
@@ -60,16 +61,19 @@ export default function PreviewPage() {
     );
   }
 
-  const isImageUrl = document.coverImage?.startsWith("http");
-  const coverStyle = document.coverImage
+  const safeCover = document.coverImage && isSafeCoverValue(document.coverImage)
+    ? document.coverImage
+    : undefined;
+  const isImageUrl = safeCover?.startsWith("http");
+  const coverStyle = safeCover
     ? isImageUrl
-      ? { backgroundImage: `url(${document.coverImage})`, backgroundSize: "cover", backgroundPosition: "center" }
-      : { background: document.coverImage }
+      ? { backgroundImage: `url(${safeCover})`, backgroundSize: "cover" as const, backgroundPosition: "center" as const }
+      : { background: safeCover }
     : undefined;
 
   return (
     <div className="mx-auto max-w-4xl pb-20">
-      {document.coverImage && (
+      {safeCover && (
         <div
           className="h-[35vh] min-h-[200px] max-h-[280px] w-full"
           style={coverStyle}
@@ -78,7 +82,7 @@ export default function PreviewPage() {
 
       <div className="px-10 md:px-16">
         {document.icon && (
-          <div className={document.coverImage ? "-mt-7" : "mt-6"}>
+          <div className={safeCover ? "-mt-7" : "mt-6"}>
             <span className="text-6xl">{document.icon}</span>
           </div>
         )}

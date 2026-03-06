@@ -30,6 +30,19 @@ export function DocumentList({ parentDocumentId, level = 0 }: DocumentListProps)
 
   const create = useMutation(api.documents.create);
   const archive = useMutation(api.documents.archive);
+  const duplicate = useMutation(api.documents.duplicate);
+  const toggleFavorite = useMutation(api.favorites.toggle);
+
+  const favorites = useQuery(
+    api.favorites.getByWorkspace,
+    activeWorkspaceId
+      ? { workspaceId: activeWorkspaceId as Id<"workspaces"> }
+      : "skip"
+  );
+
+  const favoritedDocIds = new Set(
+    favorites?.map((f) => f.documentId) ?? []
+  );
 
   const handleExpand = (docId: string) => {
     setExpanded((prev) => ({ ...prev, [docId]: !prev[docId] }));
@@ -64,6 +77,26 @@ export function DocumentList({ parentDocumentId, level = 0 }: DocumentListProps)
       toast.success("Document moved to trash");
     } catch {
       toast.error("Failed to archive document");
+    }
+  };
+
+  const handleDuplicate = async (e: React.MouseEvent, docId: Id<"documents">) => {
+    e.stopPropagation();
+    try {
+      const newId = await duplicate({ id: docId });
+      router.push(`/documents/${newId}`);
+      toast.success("Document duplicated");
+    } catch {
+      toast.error("Failed to duplicate document");
+    }
+  };
+
+  const handleToggleFavorite = async (e: React.MouseEvent, docId: Id<"documents">) => {
+    e.stopPropagation();
+    try {
+      await toggleFavorite({ documentId: docId });
+    } catch {
+      toast.error("Failed to update favorites");
     }
   };
 
@@ -110,9 +143,12 @@ export function DocumentList({ parentDocumentId, level = 0 }: DocumentListProps)
             level={level}
             active={pathname === `/documents/${doc._id}`}
             expanded={expanded[doc._id]}
+            isFavorited={favoritedDocIds.has(doc._id)}
             onExpand={() => handleExpand(doc._id)}
             onCreate={() => handleCreate(doc._id)}
             onArchive={(e) => handleArchive(e, doc._id)}
+            onToggleFavorite={(e) => handleToggleFavorite(e, doc._id)}
+            onDuplicate={(e) => handleDuplicate(e, doc._id)}
           />
           {expanded[doc._id] && (
             <DocumentList

@@ -26,6 +26,30 @@ export async function verifyMembership(
     .unique();
 }
 
+export async function logActivity(
+  ctx: MutationCtx,
+  user: { _id: Id<"users">; name: string; imageUrl?: string },
+  data: {
+    workspaceId: Id<"workspaces">;
+    type: string;
+    entityId: string;
+    entityTitle: string;
+    metadata?: string;
+  }
+) {
+  await ctx.db.insert("activities", {
+    userId: user._id,
+    userName: user.name,
+    userImageUrl: user.imageUrl,
+    workspaceId: data.workspaceId,
+    type: data.type as never,
+    entityId: data.entityId,
+    entityTitle: data.entityTitle,
+    metadata: data.metadata,
+    createdAt: Date.now(),
+  });
+}
+
 export async function getOrCreateUser(ctx: MutationCtx) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) throw new Error("Unauthenticated");

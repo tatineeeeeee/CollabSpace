@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import {
   DndContext,
@@ -61,6 +61,7 @@ export function KanbanBoard({ boardId, workspaceId, hasBackground }: KanbanBoard
   const lists = useQuery(api.lists.getByBoard, { boardId });
   const cards = useQuery(api.cards.getByBoard, { boardId });
   const members = useQuery(api.workspaces.getMembers, { workspaceId });
+  const currentUser = useQuery(api.users.getCurrentUser);
 
   // Build a map for quick member lookups by userId
   const membersMap = (() => {
@@ -116,11 +117,23 @@ export function KanbanBoard({ boardId, workspaceId, hasBackground }: KanbanBoard
     const hasFilters =
       filters.labelColors.length > 0 ||
       filters.assigneeIds.length > 0 ||
-      filters.dueDateFilter !== "all";
+      filters.dueDateFilter !== "all" ||
+      filters.searchQuery !== "" ||
+      filters.myCards;
 
     if (!hasFilters) return cards;
 
+    const searchLower = filters.searchQuery.toLowerCase();
+
     return cards.filter((card) => {
+      if (filters.searchQuery) {
+        const titleMatch = card.title.toLowerCase().includes(searchLower);
+        const descMatch = card.description?.toLowerCase().includes(searchLower) ?? false;
+        if (!titleMatch && !descMatch) return false;
+      }
+      if (filters.myCards && currentUser) {
+        if (card.assigneeId !== currentUser._id) return false;
+      }
       if (filters.labelColors.length > 0) {
         const cardColors = card.labels?.map((l) => l.color) ?? [];
         if (!filters.labelColors.some((c) => cardColors.includes(c))) return false;
@@ -204,62 +217,59 @@ export function KanbanBoard({ boardId, workspaceId, hasBackground }: KanbanBoard
     onServerCardsUpdate();
   }, [cards]);
 
-  const collisionDetectionStrategy: CollisionDetection = useCallback(
-    (args) => {
-      const activeData = args.active.data.current as DragItem | undefined;
+  const collisionDetectionStrategy: CollisionDetection = (args) => {
+    const activeData = args.active.data.current as DragItem | undefined;
 
-      // If dragging a list, only check against other lists
-      if (activeData?.type === "list") {
-        return closestCenter({
-          ...args,
-          droppableContainers: args.droppableContainers.filter(
-            (container) => listIdSet.has(container.id as string)
-          ),
-        });
-      }
+    // If dragging a list, only check against other lists
+    if (activeData?.type === "list") {
+      return closestCenter({
+        ...args,
+        droppableContainers: args.droppableContainers.filter(
+          (container) => listIdSet.has(container.id as string)
+        ),
+      });
+    }
 
-      // CRITICAL: After a cross-container move, skip detection for one frame.
-      // The pointer is still over the OLD list, so pointerWithin would snap
-      // the card back. Return cached lastOverId instead until layout settles.
-      if (recentlyMovedToNewContainer.current) {
-        return lastOverId.current ? [{ id: lastOverId.current }] : [];
-      }
-
-      // For cards: use pointerWithin first (detects as soon as pointer enters a list)
-      const pointerCollisions = pointerWithin(args);
-      const collisions =
-        pointerCollisions.length > 0
-          ? pointerCollisions
-          : rectIntersection(args);
-
-      let overId = getFirstCollision(collisions, "id");
-
-      if (overId != null) {
-        // If we hit a list container, find the closest card within it
-        if (listIdSet.has(overId as string)) {
-          const containerCardIds = (cardsByList.get(overId as string) ?? []).map(
-            (c) => c._id as string
-          );
-          if (containerCardIds.length > 0) {
-            const closestCard = closestCenter({
-              ...args,
-              droppableContainers: args.droppableContainers.filter(
-                (container) => containerCardIds.includes(container.id as string)
-              ),
-            })[0]?.id;
-            if (closestCard) overId = closestCard;
-          }
-        }
-
-        lastOverId.current = overId;
-        return [{ id: overId }];
-      }
-
-      // Return cached or empty
+    // CRITICAL: After a cross-container move, skip detection for one frame.
+    // The pointer is still over the OLD list, so pointerWithin would snap
+    // the card back. Return cached lastOverId instead until layout settles.
+    if (recentlyMovedToNewContainer.current) {
       return lastOverId.current ? [{ id: lastOverId.current }] : [];
-    },
-    [listIdSet, cardsByList]
-  );
+    }
+
+    // For cards: use pointerWithin first (detects as soon as pointer enters a list)
+    const pointerCollisions = pointerWithin(args);
+    const collisions =
+      pointerCollisions.length > 0
+        ? pointerCollisions
+        : rectIntersection(args);
+
+    let overId = getFirstCollision(collisions, "id");
+
+    if (overId != null) {
+      // If we hit a list container, find the closest card within it
+      if (listIdSet.has(overId as string)) {
+        const containerCardIds = (cardsByList.get(overId as string) ?? []).map(
+          (c) => c._id as string
+        );
+        if (containerCardIds.length > 0) {
+          const closestCard = closestCenter({
+            ...args,
+            droppableContainers: args.droppableContainers.filter(
+              (container) => containerCardIds.includes(container.id as string)
+            ),
+          })[0]?.id;
+          if (closestCard) overId = closestCard;
+        }
+      }
+
+      lastOverId.current = overId;
+      return [{ id: overId }];
+    }
+
+    // Return cached or empty
+    return lastOverId.current ? [{ id: lastOverId.current }] : [];
+  };
 
   // --- Drag handlers ---
 
@@ -432,6 +442,7 @@ export function KanbanBoard({ boardId, workspaceId, hasBackground }: KanbanBoard
         onFiltersChange={setFilters}
         workspaceId={workspaceId}
         cards={cards ?? []}
+        currentUserId={currentUser?._id}
       />
       <div className="flex min-h-0 flex-1 items-start gap-3 overflow-x-auto p-4">
         <DndContext

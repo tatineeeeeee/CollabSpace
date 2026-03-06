@@ -9,6 +9,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ImageIcon, Link, X } from "lucide-react";
+import { COVER_SOLID_COLORS } from "@/lib/colors";
 
 const GALLERY_IMAGES = [
   "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&q=80",
@@ -23,18 +24,7 @@ const GALLERY_IMAGES = [
   "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200&q=80",
 ];
 
-const SOLID_COLORS = [
-  "#2C3E50",
-  "#8E44AD",
-  "#2980B9",
-  "#16A085",
-  "#27AE60",
-  "#F39C12",
-  "#D35400",
-  "#C0392B",
-  "#7F8C8D",
-  "#34495E",
-];
+const SOLID_COLORS = COVER_SOLID_COLORS;
 
 const GRADIENTS = [
   "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",

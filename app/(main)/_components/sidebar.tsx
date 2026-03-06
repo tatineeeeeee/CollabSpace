@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { UserButton, useUser } from "@clerk/nextjs";
-import { useMutation } from "convex/react";
+import { useState } from "react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
   LayoutDashboard,
@@ -17,6 +18,7 @@ import {
   Trash,
   Moon,
   Sun,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -33,6 +35,7 @@ import { useWorkspaceStore } from "@/hooks/use-workspace";
 import { useSearchStore } from "@/hooks/use-search";
 import { DocumentList } from "@/components/documents/document-list";
 import { TrashBox } from "@/components/documents/trash-box";
+import { TemplatePicker } from "@/components/documents/template-picker";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -99,6 +102,59 @@ function SidebarFooter() {
   );
 }
 
+function FavoritesSection({ onNavigate }: { onNavigate?: () => void }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { activeWorkspaceId } = useWorkspaceStore();
+
+  const favorites = useQuery(
+    api.favorites.getByWorkspace,
+    activeWorkspaceId
+      ? { workspaceId: activeWorkspaceId as Id<"workspaces"> }
+      : "skip"
+  );
+
+  if (!favorites || favorites.length === 0) return null;
+
+  return (
+    <>
+      <Separator className="my-2" />
+      <div className="px-3 py-1">
+        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
+          <Star className="h-3 w-3" />
+          Favorites
+        </span>
+      </div>
+      <div className="flex flex-col gap-0.5">
+        {favorites.map((fav) => {
+          const isActive = pathname === `/documents/${fav.documentId}`;
+          return (
+            <button
+              key={fav._id}
+              type="button"
+              onClick={() => {
+                router.push(`/documents/${fav.documentId}`);
+                onNavigate?.();
+              }}
+              className={cn(
+                "flex min-h-7 w-full items-center gap-1.5 rounded-sm px-3 py-1 text-sm text-muted-foreground hover:bg-accent/50",
+                isActive && "bg-accent text-accent-foreground"
+              )}
+            >
+              {fav.icon ? (
+                <span className="shrink-0 text-sm">{fav.icon}</span>
+              ) : (
+                <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+              )}
+              <span className="truncate">{fav.title}</span>
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
 function SidebarContent({
   onNavigate,
   onCollapse,
@@ -112,14 +168,17 @@ function SidebarContent({
   const { open: openSearch } = useSearchStore();
   const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   const createDocument = useMutation(api.documents.create);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
 
-  const handleCreateDocument = async () => {
+  const handleCreateFromTemplate = async (template: import("@/lib/document-templates").DocumentTemplate | null) => {
     if (!activeWorkspaceId) return;
 
     try {
       const docId = await createDocument({
         workspaceId: activeWorkspaceId as Id<"workspaces">,
-        title: "Untitled",
+        title: template?.title ?? "Untitled",
+        content: template?.content,
+        icon: template?.icon,
       });
       router.push(`/documents/${docId}`);
       onNavigate?.();
@@ -176,6 +235,8 @@ function SidebarContent({
           })}
         </nav>
 
+        <FavoritesSection onNavigate={onNavigate} />
+
         <Separator className="my-2" />
 
         <div className="flex items-center justify-between px-3 py-1">
@@ -186,7 +247,7 @@ function SidebarContent({
             variant="ghost"
             size="icon"
             className="h-5 w-5"
-            onClick={handleCreateDocument}
+            onClick={() => setTemplatePickerOpen(true)}
           >
             <Plus className="h-3.5 w-3.5" />
           </Button>
@@ -216,6 +277,12 @@ function SidebarContent({
       <Separator />
 
       <SidebarFooter />
+
+      <TemplatePicker
+        open={templatePickerOpen}
+        onOpenChange={setTemplatePickerOpen}
+        onSelect={handleCreateFromTemplate}
+      />
     </div>
   );
 }

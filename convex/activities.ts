@@ -27,8 +27,16 @@ export const getRecent = query({
       .order("desc")
       .take(limit);
 
+    // Use denormalized userName/userImageUrl when available, fall back to join
     const activitiesWithUsers = await Promise.all(
       activities.map(async (activity) => {
+        if (activity.userName) {
+          return {
+            ...activity,
+            userName: activity.userName,
+            userImageUrl: activity.userImageUrl,
+          };
+        }
         const activityUser = await ctx.db.get(activity.userId);
         return {
           ...activity,

@@ -207,16 +207,80 @@ export const remove = mutation({
     if (!membership || membership.role !== "owner")
       throw new Error("Unauthorized");
 
-    // Delete all members
-    const members = await ctx.db
+    // Cascade-delete all related data
+
+    // 1. Activities
+    const activities = await ctx.db
+      .query("activities")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.id))
+      .collect();
+    for (const activity of activities) {
+      await ctx.db.delete(activity._id);
+    }
+
+    // 2. Favorites
+    const allMembers = await ctx.db
       .query("workspaceMembers")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", args.id))
       .collect();
+    for (const member of allMembers) {
+      const favs = await ctx.db
+        .query("favorites")
+        .withIndex("by_user_workspace", (q) =>
+          q.eq("userId", member.userId).eq("workspaceId", args.id)
+        )
+        .collect();
+      for (const fav of favs) {
+        await ctx.db.delete(fav._id);
+      }
+    }
 
-    for (const member of members) {
+    // 3. Boards → Lists → Cards → Comments
+    const boards = await ctx.db
+      .query("boards")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.id))
+      .collect();
+    for (const board of boards) {
+      const cards = await ctx.db
+        .query("cards")
+        .withIndex("by_board", (q) => q.eq("boardId", board._id))
+        .collect();
+      for (const card of cards) {
+        const comments = await ctx.db
+          .query("comments")
+          .withIndex("by_card", (q) => q.eq("cardId", card._id))
+          .collect();
+        for (const comment of comments) {
+          await ctx.db.delete(comment._id);
+        }
+        await ctx.db.delete(card._id);
+      }
+
+      const lists = await ctx.db
+        .query("lists")
+        .withIndex("by_board", (q) => q.eq("boardId", board._id))
+        .collect();
+      for (const list of lists) {
+        await ctx.db.delete(list._id);
+      }
+      await ctx.db.delete(board._id);
+    }
+
+    // 4. Documents
+    const documents = await ctx.db
+      .query("documents")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.id))
+      .collect();
+    for (const doc of documents) {
+      await ctx.db.delete(doc._id);
+    }
+
+    // 5. Workspace members
+    for (const member of allMembers) {
       await ctx.db.delete(member._id);
     }
 
+    // 6. Workspace itself
     await ctx.db.delete(args.id);
   },
 });

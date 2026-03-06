@@ -35,18 +35,23 @@ import { EditorFooter } from "./editor-footer";
 import { SlashCommand } from "./slash-command";
 import { Callout } from "./callout-extension";
 import { ToggleDetails, ToggleSummary } from "./toggle-extension";
+import { TableOfContents } from "./toc-extension";
 import type { Id } from "@/convex/_generated/dataModel";
 
 interface EditorProps {
   documentId: Id<"documents">;
   initialContent?: string;
   editable?: boolean;
+  lastEditedBy?: string;
+  lastEditedAt?: number;
 }
 
 export function Editor({
   documentId,
   initialContent,
   editable = true,
+  lastEditedBy,
+  lastEditedAt,
 }: EditorProps) {
   const updateContent = useMutation(api.documents.updateContent);
   const [content, setContent] = useState(initialContent ?? "");
@@ -102,9 +107,17 @@ export function Editor({
       Callout,
       ToggleDetails,
       ToggleSummary,
+      TableOfContents,
       SlashCommand,
     ],
-    content: initialContent ? JSON.parse(initialContent) : undefined,
+    content: (() => {
+      if (!initialContent) return undefined;
+      try {
+        return JSON.parse(initialContent);
+      } catch {
+        return undefined;
+      }
+    })(),
     editable,
     immediatelyRender: false,
     editorProps: {
@@ -208,7 +221,7 @@ export function Editor({
       )}
       <EditorContent editor={editor} />
       {editable && (
-        <EditorFooter wordCount={wordCount} saveStatus={saveStatus} />
+        <EditorFooter wordCount={wordCount} saveStatus={saveStatus} lastEditedBy={lastEditedBy} lastEditedAt={lastEditedAt} />
       )}
     </div>
   );

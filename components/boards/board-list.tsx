@@ -15,12 +15,17 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { BoardCard } from "./board-card";
-import { GripVertical, MoreHorizontal, Plus, Trash, X } from "lucide-react";
+import { Check, GripVertical, MoreHorizontal, Palette, Plus, Trash, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LIST_COLORS } from "@/lib/colors";
 import { toast } from "sonner";
 import type { Doc } from "@/convex/_generated/dataModel";
 
@@ -54,6 +59,7 @@ export function BoardList({
   const style = {
     transform: CSS.Translate.toString(transform),
     transition: transition ?? "transform 250ms cubic-bezier(0.25, 1, 0.5, 1)",
+    ...(list.color ? { backgroundColor: `${list.color}30` } : {}),
   };
 
   const updateList = useMutation(api.lists.update);
@@ -126,17 +132,19 @@ export function BoardList({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex w-72 shrink-0 flex-col rounded-xl bg-background/80 shadow-sm backdrop-blur-sm dark:bg-card/80",
+        "group/list flex w-72 shrink-0 flex-col rounded-xl shadow-sm",
+        !list.color && "bg-background/80 backdrop-blur-sm dark:bg-card/80",
         isDragging && "opacity-50",
         isDragOverlay && "rotate-2 shadow-xl"
       )}
     >
+
       {/* List header */}
       <div className="flex items-center gap-1 px-2 py-2">
         <button
           {...attributes}
           {...listeners}
-          className="shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing"
+          className="shrink-0 cursor-grab text-muted-foreground/40 opacity-0 transition-opacity group-hover/list:opacity-100 active:cursor-grabbing"
         >
           <GripVertical className="h-4 w-4" />
         </button>
@@ -148,11 +156,11 @@ export function BoardList({
           onFocus={() => setLocalTitle(displayTitle)}
           onBlur={handleTitleSubmit}
           onKeyDown={handleTitleKeyDown}
-          className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none"
+          className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none"
           placeholder="List title"
         />
 
-        <span className="mr-1 text-xs text-muted-foreground">
+        <span className="mr-1 rounded-full bg-muted/50 px-1.5 text-[11px] text-muted-foreground">
           {cards.length}
         </span>
 
@@ -172,6 +180,44 @@ export function BoardList({
               <Plus className="mr-2 h-4 w-4" />
               Add card
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Palette className="mr-2 h-4 w-4" />
+                Change list color
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="p-2">
+                <div className="grid grid-cols-5 gap-1.5">
+                  {LIST_COLORS.map((c) => (
+                    <button
+                      type="button"
+                      key={c.value}
+                      className="flex h-7 w-7 items-center justify-center rounded-md transition-transform hover:scale-110"
+                      style={{ backgroundColor: c.value }}
+                      title={c.name}
+                      onClick={() =>
+                        updateList({ id: list._id, color: c.value })
+                      }
+                    >
+                      {list.color === c.value && (
+                        <Check className="h-3.5 w-3.5 text-white" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+                {list.color && (
+                  <button
+                    type="button"
+                    className="mt-2 flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
+                    onClick={() => updateList({ id: list._id, color: "" })}
+                  >
+                    <X className="h-3 w-3" />
+                    Remove color
+                  </button>
+                )}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuSeparator />
             <ConfirmDialog
               onConfirm={handleRemoveList}
               title="Delete this list?"

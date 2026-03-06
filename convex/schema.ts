@@ -37,6 +37,7 @@ export default defineSchema({
     parentDocumentId: v.optional(v.id("documents")),
     icon: v.optional(v.string()),
     coverImage: v.optional(v.string()),
+    lastEditedBy: v.optional(v.id("users")),
     isArchived: v.boolean(),
     isPublished: v.boolean(),
     createdAt: v.number(),
@@ -71,6 +72,7 @@ export default defineSchema({
     title: v.string(),
     boardId: v.id("boards"),
     order: v.number(),
+    color: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_board", ["boardId"])
@@ -110,10 +112,34 @@ export default defineSchema({
     .index("by_list", ["listId"])
     .index("by_list_order", ["listId", "order"])
     .index("by_board", ["boardId"])
+    .index("by_board_archived", ["boardId", "isArchived"])
     .index("by_assignee", ["assigneeId"]),
+
+  comments: defineTable({
+    cardId: v.id("cards"),
+    userId: v.id("users"),
+    content: v.string(),
+    userName: v.optional(v.string()),
+    userImageUrl: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_card", ["cardId"])
+    .index("by_card_created", ["cardId", "createdAt"])
+    .index("by_user", ["userId"]),
+
+  favorites: defineTable({
+    userId: v.id("users"),
+    workspaceId: v.id("workspaces"),
+    documentId: v.id("documents"),
+    createdAt: v.number(),
+  })
+    .index("by_user_workspace", ["userId", "workspaceId"])
+    .index("by_user_document", ["userId", "documentId"]),
 
   activities: defineTable({
     userId: v.id("users"),
+    userName: v.optional(v.string()),
+    userImageUrl: v.optional(v.string()),
     workspaceId: v.id("workspaces"),
     type: v.union(
       v.literal("document_created"),

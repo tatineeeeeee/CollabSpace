@@ -11,7 +11,9 @@
 import type * as activities from "../activities.js";
 import type * as boards from "../boards.js";
 import type * as cards from "../cards.js";
+import type * as comments from "../comments.js";
 import type * as documents from "../documents.js";
+import type * as favorites from "../favorites.js";
 import type * as http from "../http.js";
 import type * as lib from "../lib.js";
 import type * as lists from "../lists.js";
@@ -28,7 +30,9 @@ declare const fullApi: ApiFromModules<{
   activities: typeof activities;
   boards: typeof boards;
   cards: typeof cards;
+  comments: typeof comments;
   documents: typeof documents;
+  favorites: typeof favorites;
   http: typeof http;
   lib: typeof lib;
   lists: typeof lists;

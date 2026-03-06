@@ -204,3 +204,50 @@
 .tiptap .toggle-details > :not(summary) {
   padding: 0 0.75rem 0.5rem;
 }
+
+/* Tiptap Table of Contents */
+.tiptap .toc-block {
+  border-left: 3px solid var(--color-primary);
+  background-color: var(--color-muted);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin: 0.5rem 0;
+}
+
+.tiptap .toc-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted-foreground);
+  margin-bottom: 0.5rem;
+}
+
+.tiptap .toc-empty {
+  font-size: 0.875rem;
+  color: var(--color-muted-foreground);
+}
+
+.tiptap .toc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tiptap .toc-item {
+  margin: 0;
+}
+
+.tiptap .toc-link {
+  display: block;
+  padding: 0.125rem 0;
+  font-size: 0.875rem;
+  color: var(--color-muted-foreground);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.tiptap .toc-link:hover {
+  color: var(--color-foreground);
+}

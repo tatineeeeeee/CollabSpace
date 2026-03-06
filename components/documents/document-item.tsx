@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ChevronRight, FileText, MoreHorizontal, Plus, Trash } from "lucide-react";
+import { ChevronRight, Copy, FileText, MoreHorizontal, Plus, Star, Trash } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,9 +18,12 @@ interface DocumentItemProps {
   active?: boolean;
   level?: number;
   expanded?: boolean;
+  isFavorited?: boolean;
   onExpand?: () => void;
   onCreate?: () => void;
   onArchive?: (e: React.MouseEvent) => void;
+  onToggleFavorite?: (e: React.MouseEvent) => void;
+  onDuplicate?: (e: React.MouseEvent) => void;
 }
 
 export function DocumentItem({
@@ -30,9 +33,12 @@ export function DocumentItem({
   active,
   level = 0,
   expanded,
+  isFavorited,
   onExpand,
   onCreate,
   onArchive,
+  onToggleFavorite,
+  onDuplicate,
 }: DocumentItemProps) {
   const router = useRouter();
 
@@ -49,7 +55,14 @@ export function DocumentItem({
   return (
     <div
       onClick={() => router.push(`/documents/${id}`)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          router.push(`/documents/${id}`);
+        }
+      }}
       role="button"
+      tabIndex={0}
       style={{ paddingLeft: `${level * 12 + 12}px` }}
       className={cn(
         "group flex min-h-[28px] w-full cursor-pointer items-center gap-1 rounded-sm py-1 pr-3 text-sm text-muted-foreground hover:bg-accent/50",
@@ -79,11 +92,19 @@ export function DocumentItem({
       <div className="ml-auto flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-            <button className="flex h-5 w-5 items-center justify-center rounded-sm hover:bg-accent">
+            <button aria-label="Document options" className="flex h-5 w-5 items-center justify-center rounded-sm hover:bg-accent">
               <MoreHorizontal className="h-3.5 w-3.5" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" side="right" forceMount>
+            <DropdownMenuItem onClick={onToggleFavorite}>
+              <Star className="mr-2 h-4 w-4" />
+              {isFavorited ? "Remove from favorites" : "Add to favorites"}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onDuplicate}>
+              <Copy className="mr-2 h-4 w-4" />
+              Duplicate
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={onArchive}>
               <Trash className="mr-2 h-4 w-4" />
               Archive
@@ -93,6 +114,7 @@ export function DocumentItem({
 
         <button
           onClick={handleCreate}
+          aria-label="Create sub-page"
           className="flex h-5 w-5 items-center justify-center rounded-sm hover:bg-accent"
         >
           <Plus className="h-3.5 w-3.5" />

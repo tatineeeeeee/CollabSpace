@@ -29,27 +29,13 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import { ImageIcon, Trash, X, CalendarIcon, User, Plus, CheckSquare } from "lucide-react";
+import { ImageIcon, Trash, X, CalendarIcon, User, Plus, Copy, MessageSquare, Send } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useDebounce } from "@/hooks/use-debounce";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
+import { LABEL_COLORS, CARD_COVER_COLORS } from "@/lib/colors";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
-
-const LABEL_COLORS = [
-  { name: "Red", color: "#ef4444" },
-  { name: "Orange", color: "#f97316" },
-  { name: "Yellow", color: "#eab308" },
-  { name: "Green", color: "#22c55e" },
-  { name: "Blue", color: "#3b82f6" },
-  { name: "Purple", color: "#a855f7" },
-  { name: "Pink", color: "#ec4899" },
-];
-
-const COVER_COLORS = [
-  "#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6",
-  "#a855f7", "#ec4899", "#14b8a6", "#6366f1", "#64748b",
-];
 
 interface CardDialogProps {
   card: Doc<"cards"> | null;
@@ -88,6 +74,10 @@ function CardDialogContent({
 }) {
   const updateCard = useMutation(api.cards.update);
   const archiveCard = useMutation(api.cards.archive);
+  const duplicateCard = useMutation(api.cards.duplicate);
+  const createComment = useMutation(api.comments.create);
+  const removeComment = useMutation(api.comments.remove);
+  const comments = useQuery(api.comments.getByCard, { cardId: card._id });
   const members = useQuery(api.workspaces.getMembers, { workspaceId });
 
   const [title, setTitle] = useState(card.title);
@@ -193,6 +183,37 @@ function CardDialogContent({
     await updateCard({ id: card._id, coverImage: "" });
   };
 
+  const [commentText, setCommentText] = useState("");
+
+  const handleAddComment = async () => {
+    const trimmed = commentText.trim();
+    if (!trimmed) return;
+    try {
+      await createComment({ cardId: card._id, content: trimmed });
+      setCommentText("");
+    } catch {
+      toast.error("Failed to add comment");
+    }
+  };
+
+  const handleDeleteComment = async (commentId: Id<"comments">) => {
+    try {
+      await removeComment({ id: commentId });
+    } catch {
+      toast.error("Failed to delete comment");
+    }
+  };
+
+  const handleDuplicate = async () => {
+    try {
+      await duplicateCard({ id: card._id });
+      toast.success("Card duplicated");
+      onClose();
+    } catch {
+      toast.error("Failed to duplicate card");
+    }
+  };
+
   const handleArchive = async () => {
     try {
       await archiveCard({ id: card._id });
@@ -203,9 +224,9 @@ function CardDialogContent({
     }
   };
 
-  const currentAssignee = members?.find(
-    (m) => m && m.userId === card.assigneeId
-  );
+  const currentAssignee = members
+    ?.filter((m): m is NonNullable<typeof m> => m !== null)
+    .find((m) => m.userId === card.assigneeId);
 
   return (
     <div className="flex flex-col gap-4">
@@ -234,11 +255,11 @@ function CardDialogContent({
       <div className="flex flex-col gap-1.5">
         <Label className="text-xs text-muted-foreground">Cover color</Label>
         <div className="flex flex-wrap gap-1.5">
-          {COVER_COLORS.map((color) => (
+          {CARD_COVER_COLORS.map((color) => (
             <button
               key={color}
               type="button"
-              title={`Set cover color ${color}`}
+              aria-label={`Set cover color ${color}`}
               onClick={() => handleCoverColor(color)}
               className={cn(
                 "h-6 w-6 rounded-md border-2 transition-all",
@@ -252,7 +273,7 @@ function CardDialogContent({
           {coverColor && (
             <button
               type="button"
-              title="Remove cover color"
+              aria-label="Remove cover color"
               onClick={() => handleCoverColor(undefined)}
               className="flex h-6 w-6 items-center justify-center rounded-md border text-muted-foreground hover:text-foreground"
             >
@@ -349,7 +370,7 @@ function CardDialogContent({
               />
               <button
                 type="button"
-                title="Remove item"
+                aria-label="Remove item"
                 onClick={() => handleRemoveChecklistItem(item.id)}
                 className="text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
               >
@@ -497,8 +518,84 @@ function CardDialogContent({
         </div>
       </div>
 
+      {/* Comments */}
+      <div className="flex flex-col gap-1.5">
+        <Label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <MessageSquare className="h-3.5 w-3.5" />
+          Comments
+          {comments && comments.length > 0 && (
+            <span>({comments.length})</span>
+          )}
+        </Label>
+        <div className="flex gap-2">
+          <Textarea
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+            placeholder="Write a comment..."
+            className="min-h-16 resize-none text-sm"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                handleAddComment();
+              }
+            }}
+          />
+        </div>
+        <Button
+          size="sm"
+          className="w-fit gap-1.5"
+          onClick={handleAddComment}
+          disabled={!commentText.trim()}
+        >
+          <Send className="h-3 w-3" />
+          Comment
+        </Button>
+        {comments && comments.length > 0 && (
+          <div className="mt-1 flex flex-col gap-2">
+            {comments.map((comment) => (
+              <div key={comment._id} className="group/comment flex gap-2">
+                <Avatar className="mt-0.5 h-6 w-6 shrink-0">
+                  {comment.userImageUrl && (
+                    <AvatarImage src={comment.userImageUrl} />
+                  )}
+                  <AvatarFallback className="text-[10px]">
+                    {comment.userName[0]?.toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium">{comment.userName}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {formatRelativeTime(comment.createdAt)}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="Delete comment"
+                      className="ml-auto opacity-0 transition-opacity group-hover/comment:opacity-100"
+                      onClick={() => handleDeleteComment(comment._id)}
+                    >
+                      <Trash className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                    </button>
+                  </div>
+                  <p className="text-sm text-foreground/90">{comment.content}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Actions */}
-      <div className="flex justify-end border-t pt-3">
+      <div className="flex justify-end gap-2 border-t pt-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1.5"
+          onClick={handleDuplicate}
+        >
+          <Copy className="h-3.5 w-3.5" />
+          Duplicate
+        </Button>
         <ConfirmDialog
           onConfirm={handleArchive}
           title="Archive this card?"

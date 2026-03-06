@@ -23,13 +23,15 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 - `app/(public)/` — Public routes (document preview with OG meta tags)
 - `components/ui/` — shadcn/ui components (do not manually edit, use `bunx shadcn@latest add`)
 - `components/providers/` — Context providers (Convex, Clerk, Theme)
-- `components/documents/` — Document editor, toolbar, footer, list, cover image, trash
+- `components/documents/` — Document editor, toolbar, footer, list, cover image, trash, template picker, TOC extension
 - `components/boards/` — Kanban board, columns, cards, card dialog, drag-and-drop
 - `components/shared/` — Shared/reusable components (spinner, icon-picker, confirm-dialog, empty-state)
 - `convex/` — Backend: schema, queries, mutations, HTTP actions
 - `hooks/` — Custom React hooks (zustand stores, debounce, search)
-- `lib/utils.ts` — Utility functions (cn helper, formatRelativeTime)
+- `lib/utils.ts` — Utility functions (cn helper, formatRelativeTime, isSafeCoverValue)
+- `lib/colors.ts` — Centralized color palettes (LABEL_COLORS, CARD_COVER_COLORS, LIST_COLORS, BOARD_COLORS, COVER_SOLID_COLORS)
 - `lib/activity-labels.ts` — Shared activity type label map
+- `lib/document-templates.ts` — Built-in document template definitions (Meeting Notes, Project Brief, etc.)
 
 ## Commands
 
@@ -98,7 +100,12 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 - Use `isArchived` for soft deletes — never hard delete user content
 - Log user actions to the `activities` table from mutations (see Activity Logging section)
 - Use `fetchQuery` from `convex/nextjs` for server-side data fetching (e.g., `generateMetadata` in layout files for OG tags)
-- Helper functions `getAuthenticatedUser` and `verifyMembership` live in `convex/lib.ts` — reuse them in all mutations/queries
+- Helper functions `getAuthenticatedUser`, `verifyMembership`, `getOrCreateUser`, and `logActivity` live in `convex/lib.ts` — reuse them in all mutations/queries
+- Use `logActivity()` for all activity logging — it denormalizes `userName` and `userImageUrl` at insert time to avoid N+1 joins
+- Validate input bounds in mutations: title < 500 chars, content < 500KB, labels < 50, checklistItems < 200, comments < 10K chars
+- Validate assignee membership before assigning cards — `verifyMembership(ctx, assigneeId, workspaceId)`
+- Workspace `remove()` must cascade-delete all related data (activities, favorites, boards, lists, cards, comments, documents, members)
+- Comments `remove()` must verify workspace membership (user may have been removed since commenting)
 
 ### Styling
 - Use Tailwind CSS utility classes — no custom CSS unless absolutely necessary
@@ -128,16 +135,18 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 - **Optimistic local state during drag** — snapshot cards into `localCards` state on drag start, manipulate locally during drag (cross-list moves), and keep alive until server confirms the mutation via `useQuery` update. Never clear `localCards` before the mutation round-trips; clearing early causes snap-back because the UI falls back to stale server data.
 - **Cross-container drop animation** — use `useState` (not `useRef`) for the `movedToNewList` flag that controls `DragOverlay`'s `dropAnimation` prop. Refs read during render are cached by the React Compiler and return stale values. Set `dropAnimation={null}` for cross-list moves to prevent snap-back animation.
 - **Clear optimistic state with `useEffectEvent`** — watch `cards` (from `useQuery`) in a `useEffect`; when it changes and no drag is active, clear `localCards` and reset `movedToNewList`. Uses `useEffectEvent` to read latest state without violating the "no setState in effect" rule.
+- **Collision detection strategy** — `collisionDetectionStrategy` is a plain function (not wrapped in `useCallback`). The React Compiler handles memoization automatically. Manual `useCallback` with `new Set()`/`new Map()` dependencies causes compiler errors because those objects are recreated every render.
 
 ### Documents (Editor)
-- Tiptap editor with extensions: StarterKit, Placeholder, TaskList, TaskItem, Link, Highlight, TextAlign, Underline, Callout (custom), SlashCommand
-- **Slash command menu** (`slash-command.tsx`) — type `/` to open a floating command palette with block types (Text, H1-H3, lists, quote, code block, divider, callout). Uses `@tiptap/suggestion` for trigger detection, keyboard nav, and popup positioning.
+- Tiptap editor with extensions: StarterKit, Placeholder, TaskList, TaskItem, Link, Highlight, TextAlign, Underline, Image, TextStyle, Color, Table, Callout (custom), Toggle (custom), TableOfContents (custom), SlashCommand
+- **Slash command menu** (`slash-command.tsx`) — type `/` to open a floating command palette with block types (Text, H1-H3, lists, quote, code block, divider, callout, image, table, toggle, Table of Contents). Uses `@tiptap/suggestion` for trigger detection, keyboard nav, and popup positioning.
 - **Callout extension** (`callout-extension.ts`) — custom Tiptap block node with styled info box (left border + background tint + emoji icon). Supports `setCallout()` and `toggleCallout()` commands.
+- **Table of Contents extension** (`toc-extension.tsx`) — custom Tiptap atom node with React NodeView. Auto-scans document for headings (h1-h3) and renders a clickable TOC. Updates in real-time as headings change. Styled via `.toc-block` in `globals.css`. Uses `Editor` type from `@tiptap/core` (not inline types) for the NodeView component prop.
 - Debounce content saves to Convex (500ms delay)
 - Content stored as stringified Tiptap JSON
 - Support nested documents via `parentDocumentId` self-reference
 - Persistent toolbar (`editor-toolbar.tsx`) with heading select, inline formatting, lists, alignment, highlight, code, and link insertion
-- Editor footer (`editor-footer.tsx`) shows word count and save status ("Saved" / "Saving..." / "Unsaved changes")
+- Editor footer (`editor-footer.tsx`) shows word count, save status ("Saved" / "Saving..." / "Unsaved changes"), and "Last edited by {name} {time}" when available
 - Word count initialized via `useState` initializer (parse Tiptap JSON), updated in `onUpdate` callback
 - Save status managed via `useEffectEvent` (React 19.2) — replaces the old `useRef` callback pattern
 - Cover image picker supports gallery images, solid colors, gradients, custom URLs, and "Surprise me" random selection
@@ -150,22 +159,59 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 - Activity page at `/activity` shows workspace-scoped history with avatars and relative timestamps
 
 ### Card Dialog
-- Supports title, description (debounced save), labels, due date (Calendar picker from shadcn), assignee (DropdownMenu with workspace members), **checklist**, and **cover color**
+- Supports title, description (debounced save), labels, due date (Calendar picker from shadcn), assignee (DropdownMenu with workspace members), **checklist**, **cover color**, **comments**, and **duplicate**
 - **Checklist** — array of `{ id, text, completed }` items stored on the card. Progress bar + item count. Add/toggle/edit/remove items. IDs generated via `crypto.randomUUID()`.
-- **Cover color** — optional color strip at top of board cards. 10 preset colors with a picker in the dialog. Clear button to remove.
+- **Cover color** — fills entire card container background (not just a strip). 10 preset colors. `isColorDark()` helper for text contrast (white text on dark covers). Clear button to remove.
+- **Comments** — separate `comments` table (cardId, userId, content, createdAt). Real-time via `useQuery`. Shows avatar, name, relative time, content. Ctrl+Enter to submit. Delete own comments only. `convex/comments.ts` has create/getByCard/remove.
+- **Duplicate card** — `cards.duplicate` mutation copies all fields with "(copy)" suffix, places at end of same list. "Duplicate" button (Copy icon) in dialog actions.
+- **Hover quick action** — Pencil icon appears top-right on card hover (`opacity-0 group-hover:opacity-100`), opens card dialog. `onPointerDown` stopPropagation prevents drag interference.
 - `workspaceId` prop threaded from `[boardId]/page.tsx` → `KanbanBoard` → `CardDialog`
 - Due date uses `date-fns` `format()` for display; clear button to remove
 - Assignee queries `api.workspaces.getMembers`
+- Cover image has `onError` handler — hides broken images instead of showing broken icon
+
+### List Colors
+- Lists have an optional `color` field (hex string) — 10 preset colors matching Trello
+- Colored 8px header bar at the top of each list column when `list.color` is set
+- Color picker via `DropdownMenuSub` in the list `...` menu → "Change list color" → 5x2 swatch grid
+- "Remove color" button clears the color (patches with `undefined`)
+- `LIST_COLORS` constant defined in `board-list.tsx` with 10 presets: green, yellow, orange, red, purple, blue, sky, lime, pink, gray
+
+### Favorites / Bookmarks
+- Separate `favorites` table (`userId`, `workspaceId`, `documentId`) — favorites are per-user, not per-document
+- `convex/favorites.ts` — `toggle` mutation, `getByWorkspace` query, `isFavorited` query
+- Star button on document pages (breadcrumb bar) — filled yellow when favorited
+- "Favorites" section in sidebar between nav routes and "Documents" — hidden when empty
+- "Add to favorites" / "Remove from favorites" in document context menu (`document-item.tsx`)
+- Favorites joined with documents table to show title/icon; archived docs excluded
+
+### Document Templates
+- 5 built-in templates defined in `lib/document-templates.ts` as Tiptap JSON strings: Meeting Notes, Project Brief, Weekly Plan, Brainstorm, Decision Log
+- Template picker dialog (`components/documents/template-picker.tsx`) — 2-column grid with "Blank page" + 5 templates
+- Shown when clicking "+" next to Documents header in sidebar, or "Create a document" button on empty state page
+- `documents.create` mutation accepts optional `content` and `icon` args for template content
+- Templates are client-side constants — no database storage needed
+
+### Document Duplicate & Last Edited By
+- **Duplicate** — `documents.duplicate` mutation copies all fields with `" (copy)"` suffix, `isArchived=false`, `isPublished=false`
+- "Duplicate" option in document context menu (`document-item.tsx`) with `Copy` icon
+- Does NOT recursively duplicate children (matches Notion behavior)
+- **Last Edited By** — `lastEditedBy: v.optional(v.id("users"))` field on documents table
+- `updateContent` and `update` mutations automatically patch `lastEditedBy: user._id`
+- `getById` query enriches document with `lastEditedByName` by joining the users table
+- Editor footer displays "Last edited by {name} {relativeTime}" using `formatRelativeTime`
 
 ### Board Filtering
-- **Filter bar** (`board-filter-bar.tsx`) — renders above the kanban board with dropdowns for label (multi-select), assignee (multi-select), and due date status (overdue / this week / this month / no date)
-- Client-side filtering — all cards already loaded via `useQuery`, filtered in a `useMemo` before grouping by list
+- **Filter bar** (`board-filter-bar.tsx`) — renders above the kanban board with: text search, "My cards" toggle, label multi-select, assignee multi-select, and due date status
+- **Text search** — Search input with magnifying glass icon filters cards by title/description match (client-side, case-insensitive). Clear (X) button when text is present.
+- **"My cards"** — Toggle button uses `api.users.getCurrentUser` to filter cards assigned to the current user. Highlighted (variant="default") when active.
+- Client-side filtering — all cards already loaded via `useQuery`, filtered before grouping by list
 - Active filter count badge + "Clear" button when filters are active
 - Drag-and-drop works correctly with filters — order calculations use the full unfiltered card list
 
 ## Database Tables (Convex)
 
-`users` · `workspaces` · `workspaceMembers` · `documents` · `boards` · `lists` · `cards` · `activities`
+`users` · `workspaces` · `workspaceMembers` · `documents` · `boards` · `lists` · `cards` · `comments` · `favorites` · `activities`
 
 ## Environment Variables
 
@@ -273,6 +319,17 @@ Required in `.env.local`:
 - Commit frequently — one logical change per commit
 - Never commit `node_modules/`, `.env.local`, or `convex/_generated/`
 
+## Security & Input Validation
+
+- **Cover image URLs sanitized** — `isSafeCoverValue()` in `lib/utils.ts` validates URLs are http/https, hex colors, CSS gradients, or named colors before use in CSS `background-image`. Applied in public preview page.
+- **Input bounds enforced** — All Convex mutations validate string lengths and array sizes to prevent DoS via oversized payloads.
+- **Assignee membership validation** — Card assignees must be workspace members (checked in `cards.update`).
+- **Cascade delete on workspace removal** — `workspaces.remove()` deletes activities, favorites, comments, cards, lists, boards, documents, and members before the workspace itself.
+- **Comment deletion re-verifies membership** — The `comments.remove` mutation checks workspace access in addition to author ownership.
+- **Color palettes centralized** — All color constants live in `lib/colors.ts` to prevent inconsistency and reduce duplication.
+- **N+1 queries mitigated** — Activities and comments tables store denormalized `userName`/`userImageUrl` at insert time. Queries use these fields with a fallback join for old records.
+- **Use `logActivity()` helper** — Always use the `logActivity()` function from `convex/lib.ts` instead of raw `ctx.db.insert("activities", ...)` to ensure denormalization.
+
 ## Gotchas & Lessons Learned
 
 ### Next.js 16
@@ -305,6 +362,7 @@ Required in `.env.local`:
   useEffect(() => { setSaveStatus("saving"); }, [data]);
   ```
 - **Never read/write refs during render** — Only access `ref.current` inside effects and event handlers. The compiler's `refs` rule enforces this. If a ref value must influence JSX output (e.g., a prop like `dropAnimation`), convert it to `useState` instead — the compiler may cache stale ref values read during render.
+- **Don't use `useCallback`/`useMemo` with unstable deps** — `new Set()`, `new Map()`, object/array literals are recreated every render. If used as `useCallback` dependencies, the React Compiler emits `preserve-manual-memoization` errors. Remove the manual `useCallback` and let the compiler handle it.
 - **Never call impure functions in `useMemo`** — `Date.now()`, `new Date()`, `Math.random()` produce unstable results. Compute outside the memo and pass as variables.
 - **Use `useState` initializer for derived initial values** — Instead of computing initial state in a `useEffect` (which triggers an extra render), pass a function to `useState(() => computeValue())`. Example: computing initial word count from Tiptap JSON.
 - **zustand `persist` middleware** — Use for UI state that should survive page refreshes (e.g., active workspace ID, sidebar collapsed). Store name must be unique: `{ name: "collabspace-workspace" }`. Use `partialize` to exclude transient state like `mobileOpen`.

@@ -19,21 +19,9 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { ArrowLeft, Menu, MoreHorizontal, Paintbrush, Smile, Trash, X } from "lucide-react";
 import { useSidebarStore } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
+import { BOARD_COLORS } from "@/lib/colors";
 import { toast } from "sonner";
 import type { Doc } from "@/convex/_generated/dataModel";
-
-const BOARD_COLORS = [
-  { label: "Blue", value: "#0079bf" },
-  { label: "Purple", value: "#89609e" },
-  { label: "Green", value: "#519839" },
-  { label: "Orange", value: "#d29034" },
-  { label: "Red", value: "#b04632" },
-  { label: "Pink", value: "#cd5a91" },
-  { label: "Teal", value: "#00897b" },
-  { label: "Sky", value: "#00aecc" },
-  { label: "Lime", value: "#838c00" },
-  { label: "Slate", value: "#505f79" },
-] as const;
 
 const BOARD_GRADIENTS = [
   { label: "Hyper", value: "linear-gradient(225deg, #ff3cac 0%, #784ba0 50%, #2b86c5 100%)" },

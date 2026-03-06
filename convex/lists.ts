@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getAuthenticatedUser, verifyMembership } from "./lib";
+import { getAuthenticatedUser, verifyMembership, logActivity } from "./lib";
 
 // --- Mutations ---
 
@@ -35,13 +35,11 @@ export const create = mutation({
       createdAt: Date.now(),
     });
 
-    await ctx.db.insert("activities", {
-      userId: user._id,
+    await logActivity(ctx, user, {
       workspaceId: board.workspaceId,
       type: "list_created",
       entityId: listId,
       entityTitle: args.title.trim() || "Untitled List",
-      createdAt: Date.now(),
     });
 
     return listId;
@@ -51,7 +49,8 @@ export const create = mutation({
 export const update = mutation({
   args: {
     id: v.id("lists"),
-    title: v.string(),
+    title: v.optional(v.string()),
+    color: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedUser(ctx);
@@ -66,7 +65,10 @@ export const update = mutation({
     const membership = await verifyMembership(ctx, user._id, board.workspaceId);
     if (!membership) throw new Error("Not a member of this workspace");
 
-    await ctx.db.patch(args.id, { title: args.title.trim() });
+    const updates: Record<string, unknown> = {};
+    if (args.title !== undefined) updates.title = args.title.trim();
+    if (args.color !== undefined) updates.color = args.color || undefined;
+    await ctx.db.patch(args.id, updates);
   },
 });
 
@@ -85,13 +87,11 @@ export const remove = mutation({
     const membership = await verifyMembership(ctx, user._id, board.workspaceId);
     if (!membership) throw new Error("Not a member of this workspace");
 
-    await ctx.db.insert("activities", {
-      userId: user._id,
+    await logActivity(ctx, user, {
       workspaceId: board.workspaceId,
       type: "list_removed",
       entityId: args.id,
       entityTitle: list.title,
-      createdAt: Date.now(),
     });
 
     // Cascade-delete all cards in this list

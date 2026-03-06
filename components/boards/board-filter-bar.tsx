@@ -4,25 +4,30 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Filter, X } from "lucide-react";
+import { Filter, Search, User, X } from "lucide-react";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 
 export interface BoardFilters {
   labelColors: string[];
-  assigneeIds: string[];
+  assigneeIds: Id<"users">[];
   dueDateFilter: "all" | "overdue" | "this_week" | "this_month" | "no_date";
+  searchQuery: string;
+  myCards: boolean;
 }
 
 export const DEFAULT_FILTERS: BoardFilters = {
   labelColors: [],
   assigneeIds: [],
   dueDateFilter: "all",
+  searchQuery: "",
+  myCards: false,
 };
 
 interface BoardFilterBarProps {
@@ -30,6 +35,7 @@ interface BoardFilterBarProps {
   onFiltersChange: (filters: BoardFilters) => void;
   workspaceId: Id<"workspaces">;
   cards: Doc<"cards">[];
+  currentUserId?: Id<"users">;
 }
 
 const DUE_DATE_OPTIONS = [
@@ -45,6 +51,7 @@ export function BoardFilterBar({
   onFiltersChange,
   workspaceId,
   cards,
+  currentUserId,
 }: BoardFilterBarProps) {
   const members = useQuery(api.workspaces.getMembers, { workspaceId });
 
@@ -62,7 +69,9 @@ export function BoardFilterBar({
   const activeFilterCount =
     filters.labelColors.length +
     filters.assigneeIds.length +
-    (filters.dueDateFilter !== "all" ? 1 : 0);
+    (filters.dueDateFilter !== "all" ? 1 : 0) +
+    (filters.searchQuery ? 1 : 0) +
+    (filters.myCards ? 1 : 0);
 
   const handleToggleLabelColor = (color: string) => {
     const newColors = filters.labelColors.includes(color)
@@ -71,7 +80,7 @@ export function BoardFilterBar({
     onFiltersChange({ ...filters, labelColors: newColors });
   };
 
-  const handleToggleAssignee = (userId: string) => {
+  const handleToggleAssignee = (userId: Id<"users">) => {
     const newIds = filters.assigneeIds.includes(userId)
       ? filters.assigneeIds.filter((id) => id !== userId)
       : [...filters.assigneeIds, userId];
@@ -90,6 +99,40 @@ export function BoardFilterBar({
 
   return (
     <div className="flex items-center gap-2 px-4 pt-2">
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={filters.searchQuery}
+          onChange={(e) => onFiltersChange({ ...filters, searchQuery: e.target.value })}
+          placeholder="Search cards..."
+          className="h-8 w-40 pl-7 text-xs"
+        />
+        {filters.searchQuery && (
+          <button
+            type="button"
+            title="Clear search"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            onClick={() => onFiltersChange({ ...filters, searchQuery: "" })}
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+
+      {/* My Cards */}
+      {currentUserId && (
+        <Button
+          variant={filters.myCards ? "default" : "outline"}
+          size="sm"
+          className="gap-1.5 text-xs"
+          onClick={() => onFiltersChange({ ...filters, myCards: !filters.myCards })}
+        >
+          <User className="h-3 w-3" />
+          My cards
+        </Button>
+      )}
+
       {/* Label Filter */}
       {availableLabels.length > 0 && (
         <Popover>

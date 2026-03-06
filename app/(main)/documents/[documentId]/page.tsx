@@ -10,7 +10,8 @@ import { PublishBanner } from "@/components/documents/publish-banner";
 import { DocumentBreadcrumb } from "@/components/documents/document-breadcrumb";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Undo } from "lucide-react";
+import { AlertTriangle, Star, Undo } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -37,8 +38,10 @@ export default function DocumentIdPage() {
   const documentId = params.documentId as Id<"documents">;
 
   const document = useQuery(api.documents.getById, { id: documentId });
+  const isFavorited = useQuery(api.favorites.isFavorited, { documentId });
   const restore = useMutation(api.documents.restore);
   const update = useMutation(api.documents.update);
+  const toggleFavorite = useMutation(api.favorites.toggle);
 
   const handleRestore = async () => {
     try {
@@ -95,8 +98,24 @@ export default function DocumentIdPage() {
 
       {!document.isArchived && <PublishBanner document={document} />}
 
-      <div className="border-b px-4 py-2">
+      <div className="flex items-center justify-between border-b px-4 py-2">
         <DocumentBreadcrumb documentId={documentId} />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          onClick={() => toggleFavorite({ documentId })}
+          title={isFavorited ? "Remove from favorites" : "Add to favorites"}
+        >
+          <Star
+            className={cn(
+              "h-4 w-4",
+              isFavorited
+                ? "fill-yellow-400 text-yellow-400"
+                : "text-muted-foreground"
+            )}
+          />
+        </Button>
       </div>
 
       <div className="group pb-40">
@@ -116,6 +135,8 @@ export default function DocumentIdPage() {
               documentId={document._id}
               initialContent={document.content}
               editable={!document.isArchived}
+              lastEditedBy={document.lastEditedByName}
+              lastEditedAt={document.updatedAt}
             />
           </div>
         </div>

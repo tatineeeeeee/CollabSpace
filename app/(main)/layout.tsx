@@ -133,9 +133,11 @@ function AppShell({ children }: { children: React.ReactNode }) {
             collapsed ? "md:flex" : "md:hidden"
           )}
         >
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Toggle sidebar" onClick={() => {
             // Desktop: toggle sidebar, Mobile: open sheet
-            if (window.innerWidth >= 768) {
+            // Check matchMedia for SSR-safe breakpoint detection
+            const isDesktop = typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches;
+            if (isDesktop) {
               toggle();
             } else {
               setMobileOpen(true);

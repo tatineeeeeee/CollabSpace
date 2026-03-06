@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getAuthenticatedUser, verifyMembership } from "./lib";
+import { getAuthenticatedUser, verifyMembership, logActivity } from "./lib";
 
 // --- Mutations ---
 
@@ -39,13 +39,11 @@ export const create = mutation({
       updatedAt: Date.now(),
     });
 
-    await ctx.db.insert("activities", {
-      userId: user._id,
+    await logActivity(ctx, user, {
       workspaceId: board.workspaceId,
       type: "card_created",
       entityId: cardId,
       entityTitle: args.title.trim() || "Untitled Card",
-      createdAt: Date.now(),
     });
 
     return cardId;
@@ -87,8 +85,28 @@ export const update = mutation({
     const membership = await verifyMembership(ctx, user._id, board.workspaceId);
     if (!membership) throw new Error("Not a member of this workspace");
 
+    // Validate assignee is a workspace member
+    if (args.assigneeId) {
+      const assigneeMembership = await verifyMembership(ctx, args.assigneeId, board.workspaceId);
+      if (!assigneeMembership) throw new Error("Assignee is not a member of this workspace");
+    }
+
+    // Validate input bounds
+    if (args.title !== undefined && args.title.length > 500) {
+      throw new Error("Title must be under 500 characters");
+    }
+    if (args.description !== undefined && args.description.length > 100_000) {
+      throw new Error("Description must be under 100,000 characters");
+    }
+    if (args.labels !== undefined && args.labels.length > 50) {
+      throw new Error("Cannot have more than 50 labels");
+    }
+    if (args.checklistItems !== undefined && args.checklistItems.length > 200) {
+      throw new Error("Cannot have more than 200 checklist items");
+    }
+
     const updates: Record<string, unknown> = { updatedAt: Date.now() };
-    if (args.title !== undefined) updates.title = args.title;
+    if (args.title !== undefined) updates.title = args.title.trim();
     if (args.description !== undefined) updates.description = args.description;
     if (args.labels !== undefined) updates.labels = args.labels;
     if (args.dueDate !== undefined) updates.dueDate = args.dueDate;
@@ -99,13 +117,11 @@ export const update = mutation({
 
     await ctx.db.patch(args.id, updates);
 
-    await ctx.db.insert("activities", {
-      userId: user._id,
+    await logActivity(ctx, user, {
       workspaceId: board.workspaceId,
       type: "card_updated",
       entityId: args.id,
       entityTitle: args.title ?? card.title,
-      createdAt: Date.now(),
     });
   },
 });
@@ -154,8 +170,7 @@ export const reorder = mutation({
     // Log activity only for cards that moved between lists
     for (const { item, card } of snapshots) {
       if (card && item.listId !== card.listId) {
-        await ctx.db.insert("activities", {
-          userId: user._id,
+        await logActivity(ctx, user, {
           workspaceId: board.workspaceId,
           type: "card_moved",
           entityId: item.id,
@@ -164,7 +179,6 @@ export const reorder = mutation({
             fromListId: card.listId,
             toListId: item.listId,
           }),
-          createdAt: Date.now(),
         });
       }
     }
@@ -188,13 +202,11 @@ export const archive = mutation({
 
     await ctx.db.patch(args.id, { isArchived: true, updatedAt: Date.now() });
 
-    await ctx.db.insert("activities", {
-      userId: user._id,
+    await logActivity(ctx, user, {
       workspaceId: board.workspaceId,
       type: "card_archived",
       entityId: args.id,
       entityTitle: card.title,
-      createdAt: Date.now(),
     });
   },
 });
@@ -215,17 +227,68 @@ export const remove = mutation({
     const membership = await verifyMembership(ctx, user._id, board.workspaceId);
     if (!membership) throw new Error("Not a member of this workspace");
 
-    await ctx.db.insert("activities", {
-      userId: user._id,
+    await logActivity(ctx, user, {
       workspaceId: board.workspaceId,
       type: "card_archived",
       entityId: args.id,
       entityTitle: card.title,
       metadata: JSON.stringify({ deleted: true }),
-      createdAt: Date.now(),
     });
 
     await ctx.db.delete(args.id);
+  },
+});
+
+export const duplicate = mutation({
+  args: { id: v.id("cards") },
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+    if (!user) throw new Error("User not found");
+
+    const card = await ctx.db.get(args.id);
+    if (!card) throw new Error("Card not found");
+
+    const board = await ctx.db.get(card.boardId);
+    if (!board) throw new Error("Board not found");
+
+    const membership = await verifyMembership(ctx, user._id, board.workspaceId);
+    if (!membership) throw new Error("Not a member of this workspace");
+
+    const existingCards = await ctx.db
+      .query("cards")
+      .withIndex("by_list_order", (q) => q.eq("listId", card.listId))
+      .collect();
+
+    const maxOrder = existingCards.length > 0
+      ? Math.max(...existingCards.map((c) => c.order))
+      : 0;
+
+    const newTitle = `${card.title} (copy)`;
+    const cardId = await ctx.db.insert("cards", {
+      title: newTitle,
+      description: card.description,
+      listId: card.listId,
+      boardId: card.boardId,
+      order: maxOrder + 1000,
+      labels: card.labels,
+      dueDate: card.dueDate,
+      assigneeId: card.assigneeId,
+      checklistItems: card.checklistItems,
+      coverColor: card.coverColor,
+      coverImage: card.coverImage,
+      isArchived: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    await logActivity(ctx, user, {
+      workspaceId: board.workspaceId,
+      type: "card_created",
+      entityId: cardId,
+      entityTitle: newTitle,
+    });
+
+    return cardId;
   },
 });
 
@@ -246,11 +309,11 @@ export const getByBoard = query({
     const membership = await verifyMembership(ctx, user._id, board.workspaceId);
     if (!membership) return [];
 
-    const cards = await ctx.db
+    return await ctx.db
       .query("cards")
-      .withIndex("by_board", (q) => q.eq("boardId", args.boardId))
+      .withIndex("by_board_archived", (q) =>
+        q.eq("boardId", args.boardId).eq("isArchived", false)
+      )
       .collect();
-
-    return cards.filter((c) => !c.isArchived);
   },
 });

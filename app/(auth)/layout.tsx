@@ -1,5 +1,11 @@
 import Link from "next/link";
 import { Layers, FileText, Kanban, Users, ArrowLeft, Check } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Sign in — CollabSpace",
+  description: "Sign in or create an account to start collaborating with your team.",
+};
 
 export default function AuthLayout({
   children,

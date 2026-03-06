@@ -5,6 +5,22 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/**
+ * Validates that a cover image value is safe for use in CSS.
+ * Accepts http/https URLs, hex colors, CSS gradients, and known patterns.
+ */
+export function isSafeCoverValue(value: string): boolean {
+  // Allow http/https URLs
+  if (/^https?:\/\//.test(value)) return true;
+  // Allow hex colors
+  if (/^#[0-9a-fA-F]{3,8}$/.test(value)) return true;
+  // Allow CSS gradients (linear-gradient, radial-gradient, etc.)
+  if (/^(linear|radial|conic)-gradient\(/.test(value)) return true;
+  // Allow plain CSS color names (single word, letters only)
+  if (/^[a-zA-Z]{3,20}$/.test(value)) return true;
+  return false;
+}
+
 export function formatRelativeTime(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
 
