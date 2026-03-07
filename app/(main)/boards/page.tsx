@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Kanban, Plus } from "lucide-react";
+import { IconRenderer } from "@/components/shared/icon-renderer";
 import { toast } from "sonner";
 import { formatRelativeTime } from "@/lib/utils";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -129,11 +130,7 @@ export default function BoardsPage() {
             >
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  {board.icon ? (
-                    <span className="text-xl">{board.icon}</span>
-                  ) : (
-                    <Kanban className="h-5 w-5 text-muted-foreground" />
-                  )}
+                  <IconRenderer icon={board.icon ?? ""} className="h-5 w-5 text-xl" fallback={<Kanban className="h-5 w-5 text-muted-foreground" />} />
                   {board.title}
                 </CardTitle>
                 {board.description && (

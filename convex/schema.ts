@@ -38,6 +38,11 @@ export default defineSchema({
     icon: v.optional(v.string()),
     coverImage: v.optional(v.string()),
     lastEditedBy: v.optional(v.id("users")),
+    isFullWidth: v.optional(v.boolean()),
+    isSmallText: v.optional(v.boolean()),
+    fontStyle: v.optional(
+      v.union(v.literal("default"), v.literal("serif"), v.literal("mono"))
+    ),
     isArchived: v.boolean(),
     isPublished: v.boolean(),
     createdAt: v.number(),
@@ -154,7 +159,8 @@ export default defineSchema({
       v.literal("card_updated"),
       v.literal("card_archived"),
       v.literal("list_created"),
-      v.literal("list_removed")
+      v.literal("list_removed"),
+      v.literal("document_version_restored")
     ),
     entityId: v.string(),
     entityTitle: v.string(),
@@ -164,4 +170,15 @@ export default defineSchema({
     .index("by_workspace", ["workspaceId"])
     .index("by_workspace_recent", ["workspaceId", "createdAt"])
     .index("by_user", ["userId"]),
+
+  documentVersions: defineTable({
+    documentId: v.id("documents"),
+    content: v.string(),
+    title: v.string(),
+    userId: v.id("users"),
+    userName: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_document", ["documentId"])
+    .index("by_document_created", ["documentId", "createdAt"]),
 });

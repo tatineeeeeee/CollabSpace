@@ -18,7 +18,7 @@ import { Table } from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useDebounce } from "@/hooks/use-debounce";
 import {
@@ -28,18 +28,42 @@ import {
   Strikethrough,
   Code,
   Highlighter,
+  Link2,
+  Link2Off,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { EditorToolbar } from "./editor-toolbar";
+import { BlockHandle } from "./block-handle";
 import { EditorFooter } from "./editor-footer";
 import { SlashCommand } from "./slash-command";
+import Youtube from "@tiptap/extension-youtube";
+import { Markdown } from "tiptap-markdown";
+import { Embed } from "./embed-extension";
+import { ExportMenu } from "./export-menu";
 import { Callout } from "./callout-extension";
 import { ToggleDetails, ToggleSummary } from "./toggle-extension";
 import { TableOfContents } from "./toc-extension";
+import { Columns, Column } from "./columns-extension";
+import { MathBlock, MathInline } from "./math-extension";
+import { DateMention } from "./date-mention-extension";
+import { AudioBlock } from "./audio-extension";
+import { VideoBlock } from "./video-extension";
+import { BookmarkBlock } from "./bookmark-extension";
+import { ToggleableHeading } from "./toggleable-heading-extension";
+import { LinkToPage, setLinkToPageDocsFn } from "./link-to-page-extension";
+import { createMentionExtension } from "./mention-extension";
+import type { MentionDocument } from "./mention-extension";
+import { createUserMentionExtension } from "./user-mention-extension";
+import type { MentionUser } from "./user-mention-extension";
 import type { Id } from "@/convex/_generated/dataModel";
+
+// Module-level stores — updated by effect, read by ProseMirror plugins (not during render)
+let latestMentionDocs: MentionDocument[] = [];
+let latestMentionUsers: MentionUser[] = [];
 
 interface EditorProps {
   documentId: Id<"documents">;
+  workspaceId?: Id<"workspaces">;
+  title?: string;
   initialContent?: string;
   editable?: boolean;
   lastEditedBy?: string;
@@ -48,11 +72,45 @@ interface EditorProps {
 
 export function Editor({
   documentId,
+  workspaceId,
+  title = "Untitled",
   initialContent,
   editable = true,
   lastEditedBy,
   lastEditedAt,
 }: EditorProps) {
+  const mentionDocs = useQuery(
+    api.documents.getForMention,
+    workspaceId ? { workspaceId } : "skip"
+  );
+  const members = useQuery(
+    api.workspaces.getMembers,
+    workspaceId ? { workspaceId } : "skip"
+  );
+
+  const onMentionDocsChange = useEffectEvent((docs: typeof mentionDocs) => {
+    latestMentionDocs = docs ?? [];
+    setLinkToPageDocsFn(() => latestMentionDocs);
+  });
+  useEffect(() => {
+    onMentionDocsChange(mentionDocs);
+  }, [mentionDocs]);
+
+  const onMembersChange = useEffectEvent((m: typeof members) => {
+    if (m) {
+      latestMentionUsers = m
+        .filter((mem): mem is NonNullable<typeof mem> => mem !== null)
+        .map((mem) => ({
+          id: mem.userId,
+          name: mem.name || mem.email || "Unknown",
+          imageUrl: mem.imageUrl,
+        }));
+    }
+  });
+  useEffect(() => {
+    onMembersChange(members);
+  }, [members]);
+
   const updateContent = useMutation(api.documents.updateContent);
   const [content, setContent] = useState(initialContent ?? "");
   const debouncedContent = useDebounce(content, 500);
@@ -80,8 +138,9 @@ export function Editor({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
+        heading: false,
       }),
+      ToggleableHeading.configure({ levels: [1, 2, 3] }),
       Placeholder.configure({
         placeholder: "Type '/' for commands...",
       }),
@@ -108,7 +167,29 @@ export function Editor({
       ToggleDetails,
       ToggleSummary,
       TableOfContents,
+      Columns,
+      Column,
+      MathBlock,
+      MathInline,
+      DateMention,
+      AudioBlock,
+      VideoBlock,
+      BookmarkBlock,
+      LinkToPage,
       SlashCommand,
+      createMentionExtension(() => latestMentionDocs),
+      createUserMentionExtension(() => latestMentionUsers),
+      Youtube.configure({
+        controls: true,
+        nocookie: true,
+        HTMLAttributes: { class: "rounded-lg overflow-hidden" },
+      }),
+      Embed,
+      Markdown.configure({
+        html: true,
+        transformCopiedText: false,
+        transformPastedText: false,
+      }),
     ],
     content: (() => {
       if (!initialContent) return undefined;
@@ -123,7 +204,7 @@ export function Editor({
     editorProps: {
       attributes: {
         class:
-          "prose prose-sm dark:prose-invert max-w-none outline-none min-h-[500px] pt-1",
+          "prose dark:prose-invert max-w-none outline-none min-h-[70vh] pt-1",
       },
     },
     onUpdate: ({ editor }) => {
@@ -194,16 +275,51 @@ export function Editor({
     },
   ];
 
+  const handleLinkToggle = () => {
+    if (!editor) return;
+    if (editor.isActive("link")) {
+      editor.chain().focus().unsetLink().run();
+    } else {
+      const url = window.prompt("URL");
+      if (url) {
+        editor.chain().focus().extendMarkRange("link").setLink({ href: url.trim() }).run();
+      }
+    }
+  };
+
   return (
     <div className="flex flex-col">
-      {editable && editor && <EditorToolbar editor={editor} />}
-      {editor && (
+      {editor && editable && (
         <BubbleMenu editor={editor} updateDelay={150}>
-          <div className="flex items-center gap-0.5 rounded-lg border bg-background p-1 shadow-lg">
+          <div className="flex items-center gap-0.5 rounded-lg border bg-background p-1 shadow-xl">
+            {/* Turn into heading/paragraph */}
+            <select
+              title="Turn into"
+              value={
+                editor.isActive("heading", { level: 1 }) ? "h1" :
+                editor.isActive("heading", { level: 2 }) ? "h2" :
+                editor.isActive("heading", { level: 3 }) ? "h3" : "p"
+              }
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "p") editor.chain().focus().setParagraph().run();
+                else if (v === "h1") editor.chain().focus().toggleHeading({ level: 1 }).run();
+                else if (v === "h2") editor.chain().focus().toggleHeading({ level: 2 }).run();
+                else if (v === "h3") editor.chain().focus().toggleHeading({ level: 3 }).run();
+              }}
+              className="h-8 rounded-md border-none bg-transparent px-1.5 text-xs font-medium outline-none cursor-pointer hover:bg-muted"
+            >
+              <option value="p">Text</option>
+              <option value="h1">Heading 1</option>
+              <option value="h2">Heading 2</option>
+              <option value="h3">Heading 3</option>
+            </select>
+            <div className="mx-0.5 h-5 w-px bg-border" />
             {bubbleMenuItems.map((item) => {
               const Icon = item.icon;
               return (
                 <button
+                  type="button"
                   key={item.label}
                   onClick={item.action}
                   title={item.label}
@@ -216,13 +332,39 @@ export function Editor({
                 </button>
               );
             })}
+            <div className="mx-0.5 h-5 w-px bg-border" />
+            <button
+              type="button"
+              onClick={handleLinkToggle}
+              title={editor.isActive("link") ? "Remove link" : "Add link"}
+              className={cn(
+                "flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-muted",
+                editor.isActive("link") && "bg-muted text-foreground"
+              )}
+            >
+              {editor.isActive("link") ? (
+                <Link2Off className="h-4 w-4" />
+              ) : (
+                <Link2 className="h-4 w-4" />
+              )}
+            </button>
           </div>
         </BubbleMenu>
       )}
+      {editor && editable && <BlockHandle editor={editor} />}
       <EditorContent editor={editor} />
-      {editable && (
-        <EditorFooter wordCount={wordCount} saveStatus={saveStatus} lastEditedBy={lastEditedBy} lastEditedAt={lastEditedAt} />
-      )}
+      <div className="flex items-center justify-between">
+        {editable ? (
+          <EditorFooter wordCount={wordCount} saveStatus={saveStatus} lastEditedBy={lastEditedBy} lastEditedAt={lastEditedAt} />
+        ) : (
+          <div />
+        )}
+        {editor && (
+          <div className="shrink-0 pr-1">
+            <ExportMenu editor={editor} title={title} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

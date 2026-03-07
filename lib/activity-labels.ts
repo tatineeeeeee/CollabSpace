@@ -12,4 +12,5 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   card_archived: "archived card in",
   list_created: "created list in",
   list_removed: "removed list from",
+  document_version_restored: "restored a version of",
 };

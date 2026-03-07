@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { IconRenderer } from "@/components/shared/icon-renderer";
 import { cn } from "@/lib/utils";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -63,9 +64,9 @@ export function DocumentItem({
       }}
       role="button"
       tabIndex={0}
-      style={{ paddingLeft: `${level * 12 + 12}px` }}
+      style={{ paddingLeft: `${level * 12 + 8}px` }}
       className={cn(
-        "group flex min-h-[28px] w-full cursor-pointer items-center gap-1 rounded-sm py-1 pr-3 text-sm text-muted-foreground hover:bg-accent/50",
+        "group flex min-h-8 w-full cursor-pointer items-center gap-1 rounded-md py-1 pr-2 text-sm text-muted-foreground transition-colors hover:bg-accent/50",
         active && "bg-accent text-accent-foreground"
       )}
     >
@@ -81,11 +82,11 @@ export function DocumentItem({
         />
       </button>
 
-      {icon ? (
-        <span className="mr-1 shrink-0 text-sm">{icon}</span>
-      ) : (
-        <FileText className="mr-1 h-4 w-4 shrink-0 text-muted-foreground" />
-      )}
+      <IconRenderer
+        icon={icon ?? ""}
+        className="mr-1 h-4 w-4 shrink-0 text-sm"
+        fallback={<FileText className="mr-1 h-4 w-4 shrink-0 text-muted-foreground" />}
+      />
 
       <span className="truncate">{label}</span>
 

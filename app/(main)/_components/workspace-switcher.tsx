@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronsUpDown, Plus, Check, Building2 } from "lucide-react";
+import { IconRenderer } from "@/components/shared/icon-renderer";
 import { toast } from "sonner";
 
 export function WorkspaceSwitcher() {
@@ -77,7 +78,7 @@ export function WorkspaceSwitcher() {
             <div className="flex min-w-0 items-center gap-2">
               <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary text-[10px] font-bold text-primary-foreground">
                 {activeWorkspace?.icon ? (
-                  <span className="text-sm leading-none">{activeWorkspace.icon}</span>
+                  <IconRenderer icon={activeWorkspace.icon} className="text-sm leading-none" />
                 ) : activeWorkspace?.name?.[0]?.toUpperCase() ?? (
                   <Building2 className="h-3 w-3" />
                 )}
@@ -108,7 +109,7 @@ export function WorkspaceSwitcher() {
               >
                 <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary text-[10px] font-bold text-primary-foreground">
                   {ws.icon ? (
-                    <span className="text-sm leading-none">{ws.icon}</span>
+                    <IconRenderer icon={ws.icon} className="text-sm leading-none" />
                   ) : (
                     ws.name[0]?.toUpperCase()
                   )}

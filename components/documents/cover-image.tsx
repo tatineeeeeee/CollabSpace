@@ -186,6 +186,10 @@ export function CoverImage({ url, onChange, onRemove }: CoverImageProps) {
 
   return (
     <div className="group/cover relative h-[35vh] min-h-[200px] max-h-[280px] w-full" style={style}>
+      {/* Bottom gradient for better readability of avatar/title below */}
+      {isImageUrl && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background/60 to-transparent" />
+      )}
       <div className="absolute right-4 bottom-4 flex gap-2 opacity-0 transition-opacity group-hover/cover:opacity-100">
         <CoverPicker onChange={onChange}>
           <Button

@@ -43,6 +43,20 @@ export const BOARD_COLORS = [
   { label: "Slate", value: "#505f79" },
 ] as const;
 
+/** Background highlight colors (Notion-style text backgrounds) */
+export const HIGHLIGHT_BACKGROUND_COLORS = [
+  { name: "Default", color: "" },
+  { name: "Gray", color: "#f1f1ef", dark: "#2f2f2f" },
+  { name: "Brown", color: "#f4eeee", dark: "#3a2e2b" },
+  { name: "Orange", color: "#fef3c7", dark: "#422006" },
+  { name: "Yellow", color: "#fef9c3", dark: "#422006" },
+  { name: "Green", color: "#dcfce7", dark: "#052e16" },
+  { name: "Blue", color: "#dbeafe", dark: "#172554" },
+  { name: "Purple", color: "#f3e8ff", dark: "#2e1065" },
+  { name: "Pink", color: "#fce7f3", dark: "#500724" },
+  { name: "Red", color: "#fef2f2", dark: "#450a0a" },
+] as const;
+
 /** Document cover solid colors */
 export const COVER_SOLID_COLORS = [
   "#2C3E50", "#8E44AD", "#2980B9", "#16A085", "#27AE60",

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "shadcn/tailwind.css";
+@import "katex/dist/katex.min.css";
 @plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
@@ -7,8 +8,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), iawriter-mono, Nitti, Menlo, Consolas, Courier, monospace;
+  --font-serif: Lyon-Text, Georgia, YuMincho, "Yu Mincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Songti TC", "Songti SC", SimSun, "Nanum Myeongjo", NanumMyeongjo, Batang, serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -133,17 +135,223 @@
   background-size: 40px 40px;
 }
 
+/* Notion-like editor typography */
+.tiptap {
+  font-size: 1rem;
+  line-height: 1.625;
+  color: var(--color-foreground);
+}
+
+.tiptap h1 {
+  font-size: 2.25em;
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 0.25rem;
+  line-height: 1.2;
+}
+
+.tiptap h2 {
+  font-size: 1.75em;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.25rem;
+  line-height: 1.25;
+}
+
+.tiptap h3 {
+  font-size: 1.375em;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.25rem;
+  line-height: 1.3;
+}
+
+/* Toggleable headings */
+.tiptap h1,
+.tiptap h2,
+.tiptap h3 {
+  position: relative;
+}
+
+.heading-toggle-btn {
+  position: absolute;
+  left: -1.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 0.25rem;
+  background: transparent;
+  border: none;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+  padding: 0;
+}
+
+.heading-toggle-btn:hover {
+  background-color: var(--color-muted);
+  color: var(--color-foreground);
+}
+
+.heading-toggle-hint {
+  opacity: 0;
+}
+
+.tiptap h1:hover .heading-toggle-hint,
+.tiptap h2:hover .heading-toggle-hint,
+.tiptap h3:hover .heading-toggle-hint {
+  opacity: 0.5;
+}
+
+.heading-toggle-hint:hover {
+  opacity: 1 !important;
+}
+
+.heading-collapsed-content {
+  display: none !important;
+}
+
+.tiptap p {
+  margin-top: 0.125rem;
+  margin-bottom: 0.125rem;
+}
+
+.tiptap ul,
+.tiptap ol {
+  margin-top: 0.125rem;
+  margin-bottom: 0.125rem;
+}
+
+.tiptap blockquote {
+  border-left: 3px solid var(--color-foreground);
+  padding-left: 1rem;
+  color: var(--color-muted-foreground);
+  font-style: normal;
+  margin: 0.5rem 0;
+  background: transparent;
+}
+
+.tiptap hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 1.5rem 0;
+  cursor: default;
+}
+
+.tiptap hr.ProseMirror-selectednode {
+  border-top-color: var(--color-primary);
+}
+
+/* Notion-style link styling */
+.tiptap a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--color-primary);
+  opacity: 0.85;
+  transition: opacity 0.15s ease;
+}
+
+.tiptap a:hover {
+  opacity: 1;
+}
+
+.tiptap code {
+  background-color: var(--color-muted);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+  color: #eb5757;
+}
+
+.dark .tiptap code {
+  color: #ff7b72;
+}
+
+.tiptap pre {
+  background-color: oklch(0.17 0 0);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+  border: 1px solid var(--color-border);
+}
+
+.dark .tiptap pre {
+  background-color: oklch(0.12 0 0);
+}
+
+.tiptap pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.85em;
+  color: oklch(0.92 0 0);
+}
+
+/* Task list — Notion-style checkboxes */
+.tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.tiptap ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.tiptap ul[data-type="taskList"] li[data-checked="true"] > div > p {
+  text-decoration: line-through;
+  color: var(--color-muted-foreground);
+}
+
+.tiptap ul[data-type="taskList"] li label input[type="checkbox"] {
+  margin-top: 0.25rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  accent-color: #2563eb;
+  cursor: pointer;
+  border-radius: 0.25rem;
+}
+
+/* Notion-style highlight marks */
+.tiptap mark {
+  border-radius: 0.125rem;
+  padding: 0.0625rem 0;
+}
+
+/* Notion-style block hover highlight */
+.tiptap > *:not(div[data-youtube-video]):not(.columns-wrapper) {
+  border-radius: 0.25rem;
+  transition: background-color 0.1s ease;
+}
+
+.tiptap > p:hover,
+.tiptap > h1:hover,
+.tiptap > h2:hover,
+.tiptap > h3:hover,
+.tiptap > ul:hover,
+.tiptap > ol:hover,
+.tiptap > blockquote:hover {
+  background-color: var(--color-muted);
+}
+
 /* Tiptap placeholder */
 .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
   color: var(--color-muted-foreground);
-  opacity: 0.5;
+  opacity: 0.4;
   pointer-events: none;
   height: 0;
+  font-size: 1rem;
 }
 
-/* Tiptap callout block */
+/* Tiptap callout block — with color variants */
 .tiptap .callout {
   position: relative;
   padding: 0.75rem 1rem 0.75rem 2.5rem;
@@ -154,13 +362,31 @@
 }
 
 .tiptap .callout::before {
-  content: "💡";
   position: absolute;
   left: 0.625rem;
   top: 0.75rem;
   font-size: 1rem;
   line-height: 1;
 }
+
+/* Info (default) */
+.tiptap .callout-info { border-left-color: #3b82f6; }
+.tiptap .callout-info::before { content: "💡"; }
+
+/* Warning */
+.tiptap .callout-warning { border-left-color: #f59e0b; background-color: #fef3c7; }
+.dark .tiptap .callout-warning { background-color: rgba(245, 158, 11, 0.1); }
+.tiptap .callout-warning::before { content: "⚠️"; }
+
+/* Success */
+.tiptap .callout-success { border-left-color: #22c55e; background-color: #dcfce7; }
+.dark .tiptap .callout-success { background-color: rgba(34, 197, 94, 0.1); }
+.tiptap .callout-success::before { content: "✅"; }
+
+/* Error */
+.tiptap .callout-error { border-left-color: #ef4444; background-color: #fef2f2; }
+.dark .tiptap .callout-error { background-color: rgba(239, 68, 68, 0.1); }
+.tiptap .callout-error::before { content: "🚫"; }
 
 /* Tiptap table */
 .tiptap table {
@@ -182,18 +408,29 @@
   font-weight: 600;
 }
 
-/* Tiptap toggle / collapsible */
+/* Tiptap toggle / collapsible — Notion-style */
 .tiptap .toggle-details {
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-  margin: 0.5rem 0;
+  border: none;
+  border-radius: 0.375rem;
+  margin: 0.25rem 0;
+  background: transparent;
+}
+
+.tiptap .toggle-details[open] {
+  background-color: var(--color-muted);
 }
 
 .tiptap .toggle-summary {
-  padding: 0.5rem 0.75rem;
+  padding: 0.375rem 0.5rem;
   cursor: pointer;
   font-weight: 500;
   list-style: none;
+  border-radius: 0.375rem;
+  transition: background-color 0.1s ease;
+}
+
+.tiptap .toggle-summary:hover {
+  background-color: var(--color-muted);
 }
 
 .tiptap .toggle-summary::marker,
@@ -202,7 +439,13 @@
 }
 
 .tiptap .toggle-details > :not(summary) {
-  padding: 0 0.75rem 0.5rem;
+  padding: 0.25rem 0.5rem 0.5rem 1.5rem;
+}
+
+/* Notion-style image selection */
+.tiptap img.ProseMirror-selectednode {
+  outline: 3px solid var(--color-primary);
+  border-radius: 0.5rem;
 }
 
 /* Tiptap Table of Contents */
@@ -250,4 +493,414 @@
 
 .tiptap .toc-link:hover {
   color: var(--color-foreground);
+}
+
+/* Tiptap block handle — Notion-style + and grip */
+.block-handle {
+  z-index: 50;
+}
+
+.block-handle-buttons {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.block-handle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.5rem;
+  border-radius: 0.25rem;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.block-handle-btn:hover {
+  background-color: var(--color-muted);
+  color: var(--color-foreground);
+}
+
+.block-handle-grip {
+  cursor: grab;
+}
+
+.block-handle-grip:active {
+  cursor: grabbing;
+}
+
+/* Keep handle visible while context menu is open */
+.block-handle.menu-open {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Tiptap mention — Notion-style page reference */
+.tiptap .mention {
+  background-color: transparent;
+  color: var(--color-primary);
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.25rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--color-border);
+  font-weight: 500;
+  transition: background-color 0.1s ease;
+}
+
+.tiptap .mention:hover {
+  background-color: var(--color-accent);
+  text-decoration-color: var(--color-primary);
+}
+
+/* User mention — Notion-style @person reference */
+.tiptap .user-mention {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.0625rem 0.375rem;
+  border-radius: 0.25rem;
+  background-color: var(--color-muted);
+  color: var(--color-foreground);
+  font-weight: 500;
+  font-size: 0.875em;
+  cursor: default;
+  transition: background-color 0.1s ease;
+}
+
+.tiptap .user-mention:hover {
+  background-color: var(--color-accent);
+}
+
+/* Tiptap embed block */
+.tiptap .embed-wrapper {
+  position: relative;
+  width: 100%;
+  margin: 0.5rem 0;
+}
+
+.tiptap .embed-wrapper iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: none;
+  border-radius: 0.5rem;
+}
+
+/* Tiptap YouTube */
+.tiptap div[data-youtube-video] {
+  margin: 0.5rem 0;
+}
+
+.tiptap div[data-youtube-video] iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: none;
+  border-radius: 0.5rem;
+}
+
+/* Tiptap multi-column layout */
+.tiptap .columns-wrapper {
+  display: grid;
+  gap: 1rem;
+  margin: 0.5rem 0;
+}
+
+.tiptap .columns-wrapper[data-columns="2"] {
+  grid-template-columns: 1fr 1fr;
+}
+
+.tiptap .columns-wrapper[data-columns="3"] {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.tiptap .column {
+  min-width: 0;
+  overflow-wrap: break-word;
+  min-height: 2rem;
+  padding: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.tiptap .column:hover {
+  border-color: var(--color-border);
+  background-color: var(--color-muted);
+}
+
+.tiptap .column:focus-within {
+  border-color: var(--color-border);
+}
+
+@media (max-width: 640px) {
+  .tiptap .columns-wrapper[data-columns="2"],
+  .tiptap .columns-wrapper[data-columns="3"] {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Math equation blocks (KaTeX) */
+.tiptap .math-block {
+  margin: 0.5rem 0;
+  border-radius: 0.5rem;
+  transition: background-color 0.15s ease;
+}
+
+.tiptap .math-display {
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+  cursor: pointer;
+}
+
+.tiptap .math-display:hover {
+  background-color: var(--color-muted);
+}
+
+.tiptap .math-selected {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.tiptap .math-editing {
+  border: 1px solid var(--color-border);
+  padding: 0.5rem;
+}
+
+.tiptap .math-editor-input {
+  width: 100%;
+  min-height: 3rem;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--color-foreground);
+  resize: vertical;
+  padding: 0.5rem;
+}
+
+.tiptap .math-editor-input::placeholder {
+  color: var(--color-muted-foreground);
+  opacity: 0.5;
+}
+
+.tiptap .math-inline {
+  display: inline;
+  padding: 0.0625rem 0.25rem;
+  border-radius: 0.25rem;
+  background-color: var(--color-muted);
+  cursor: pointer;
+}
+
+.tiptap .math-inline:hover {
+  background-color: var(--color-accent);
+}
+
+.tiptap .math-editing-inline {
+  display: inline-flex;
+}
+
+.tiptap .math-inline-input {
+  width: 8rem;
+  background: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.375rem;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  color: var(--color-foreground);
+  outline: none;
+}
+
+.tiptap .math-inline-input:focus {
+  border-color: var(--color-primary);
+}
+
+/* Date mention — inline date pill with calendar */
+.tiptap .date-mention {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.0625rem 0.375rem;
+  border-radius: 0.25rem;
+  background-color: var(--color-muted);
+  color: var(--color-foreground);
+  font-size: 0.875em;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+  white-space: nowrap;
+}
+
+.tiptap .date-mention:hover {
+  background-color: var(--color-accent);
+}
+
+.tiptap .date-mention-selected {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+/* Audio block */
+.tiptap .audio-block {
+  margin: 0.5rem 0;
+  width: 100%;
+}
+
+.tiptap .audio-block audio {
+  width: 100%;
+  border-radius: 0.5rem;
+}
+
+/* Video block */
+.tiptap .video-block {
+  margin: 0.5rem 0;
+  width: 100%;
+}
+
+.tiptap .video-block video {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 0.5rem;
+  background: black;
+}
+
+/* Bookmark / Link Preview Card */
+.tiptap .bookmark-card {
+  margin: 0.5rem 0;
+}
+
+.tiptap .bookmark-loaded {
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+}
+
+.tiptap .bookmark-loaded:hover {
+  border-color: var(--color-muted-foreground);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.dark .tiptap .bookmark-loaded:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.tiptap .bookmark-meta {
+  flex: 1;
+  min-width: 0;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tiptap .bookmark-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tiptap .bookmark-favicon {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.125rem;
+  flex-shrink: 0;
+}
+
+.tiptap .bookmark-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tiptap .bookmark-description {
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  margin: 0;
+}
+
+.tiptap .bookmark-domain {
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+  display: flex;
+  align-items: center;
+}
+
+.tiptap .bookmark-image {
+  width: 200px;
+  flex-shrink: 0;
+}
+
+.tiptap .bookmark-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 640px) {
+  .tiptap .bookmark-image {
+    display: none;
+  }
+}
+
+/* Link to Page block */
+.tiptap .link-to-page {
+  margin: 0.25rem 0;
+}
+
+.tiptap .link-to-page-card {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  text-decoration: none;
+  color: inherit;
+}
+
+.tiptap .link-to-page-card:hover {
+  background-color: var(--color-muted);
+}
+
+.tiptap .link-to-page-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.tiptap .link-to-page-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tiptap .link-to-page-picker {
+  padding: 0;
 }

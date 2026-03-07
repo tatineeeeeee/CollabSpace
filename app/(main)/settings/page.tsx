@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Monitor, Sun, Moon } from "lucide-react";
 import { IconPicker } from "@/components/shared/icon-picker";
+import { IconRenderer } from "@/components/shared/icon-renderer";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -159,13 +160,13 @@ export default function SettingsPage() {
         <div className="rounded-lg border p-6">
           <h2 className="mb-4 text-lg font-semibold">Workspace icon</h2>
           <div className="flex items-center gap-3">
-            <IconPicker onChange={handleIconChange}>
+            <IconPicker onChange={handleIconChange} onRemove={() => updateWorkspace({ id: activeWorkspaceId as Id<"workspaces">, icon: "" })}>
               <button className="flex h-12 w-12 items-center justify-center rounded-lg border-2 border-dashed text-2xl hover:bg-muted">
-                {workspace.icon ?? "🏢"}
+                <IconRenderer icon={workspace.icon || ""} className="h-8 w-8 text-2xl" fallback={<span>🏢</span>} />
               </button>
             </IconPicker>
             <p className="text-sm text-muted-foreground">
-              Click to choose an emoji icon for your workspace
+              Click to choose an icon for your workspace
             </p>
           </div>
         </div>

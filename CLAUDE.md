@@ -13,6 +13,7 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 - **Drag & Drop:** @dnd-kit
 - **UI State:** zustand
 - **Icons:** lucide-react
+- **Fonts:** Inter (sans), JetBrains Mono (mono), Notion-style system font fallbacks, Lyon-Text/Georgia (serif)
 - **Deployment:** Vercel + Convex Cloud
 
 ## Project Structure
@@ -25,11 +26,12 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 - `components/providers/` — Context providers (Convex, Clerk, Theme)
 - `components/documents/` — Document editor, toolbar, footer, list, cover image, trash, template picker, TOC extension
 - `components/boards/` — Kanban board, columns, cards, card dialog, drag-and-drop
-- `components/shared/` — Shared/reusable components (spinner, icon-picker, confirm-dialog, empty-state)
+- `components/shared/` — Shared/reusable components (spinner, icon-picker, icon-renderer, confirm-dialog, empty-state)
 - `convex/` — Backend: schema, queries, mutations, HTTP actions
 - `hooks/` — Custom React hooks (zustand stores, debounce, search)
 - `lib/utils.ts` — Utility functions (cn helper, formatRelativeTime, isSafeCoverValue)
 - `lib/colors.ts` — Centralized color palettes (LABEL_COLORS, CARD_COVER_COLORS, LIST_COLORS, BOARD_COLORS, COVER_SOLID_COLORS)
+- `lib/icon-utils.ts` — Icon type detection, emoji data, Lucide icon map (160+ static imports), search functions
 - `lib/activity-labels.ts` — Shared activity type label map
 - `lib/document-templates.ts` — Built-in document template definitions (Meeting Notes, Project Brief, etc.)
 
@@ -54,7 +56,7 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 ### File Naming
 - Components: `kebab-case.tsx` (e.g., `kanban-board.tsx`, `document-list.tsx`)
 - Hooks: `use-kebab-case.ts` (e.g., `use-search.ts`, `use-debounce.ts`)
-- Convex functions: `kebab-case.ts` or `camelCase.ts` matching the table name (e.g., `documents.ts`, `cards.ts`)
+- Convex functions: `camelCase.ts` matching the table name (e.g., `documents.ts`, `cards.ts`, `documentVersions.ts`) — **no hyphens** (Convex rejects them)
 - Route segments: `kebab-case` folders
 
 ### React 19.2 / React Compiler Patterns
@@ -137,9 +139,33 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 - **Clear optimistic state with `useEffectEvent`** — watch `cards` (from `useQuery`) in a `useEffect`; when it changes and no drag is active, clear `localCards` and reset `movedToNewList`. Uses `useEffectEvent` to read latest state without violating the "no setState in effect" rule.
 - **Collision detection strategy** — `collisionDetectionStrategy` is a plain function (not wrapped in `useCallback`). The React Compiler handles memoization automatically. Manual `useCallback` with `new Set()`/`new Map()` dependencies causes compiler errors because those objects are recreated every render.
 
+### Icon System
+- **Icon picker** (`components/shared/icon-picker.tsx`) — Notion-style tabbed popover with Emoji, Icons (Lucide), and Upload tabs, plus Remove button
+- **Icon renderer** (`components/shared/icon-renderer.tsx`) — Universal component that detects icon type and renders emoji `<span>`, Lucide SVG, or `<img>` with error fallback
+- **Icon utils** (`lib/icon-utils.ts`) — `isLucideIcon()`, `isUrlIcon()`, `isEmojiIcon()`, `getLucideIconName()`, `LUCIDE_ICON_MAP` (160+ static imports), `EMOJI_DATA` (9 categories), `searchEmojis()`, `searchLucideIcons()`
+- **Icon string format** — Emojis stored as raw unicode, Lucide icons as `lucide:{name}`, image URLs as `https://...` — all in existing `v.optional(v.string())` field, no schema changes
+- **File upload** — `convex/files.ts` provides `generateUploadUrl` and `getStorageUrl` mutations for Convex file storage. Upload tab in icon picker uses these to upload images and store serving URLs as icon strings.
+- **Icon size on document pages** — 120px (`h-30 w-30 text-[120px]`) with `-mt-16` overlap on cover images, matching Notion's layout
+
+### Fonts & Typography
+- **Sans (default):** Inter via `next/font/google`, with Notion fallback stack (`-apple-system, BlinkMacSystemFont, "Segoe UI"`)
+- **Mono:** JetBrains Mono via `next/font/google`, with Notion fallback stack (`iawriter-mono, Nitti, Menlo, Consolas`)
+- **Serif:** Notion's exact stack (`Lyon-Text, Georgia, YuMincho, "Yu Mincho"`, plus CJK fallbacks)
+- Font CSS variables (`--font-inter`, `--font-jetbrains-mono`) set on `<body>` via `next/font` variable prop
+- Tailwind theme maps: `--font-sans`, `--font-mono`, `--font-serif` in `globals.css` `@theme` block
+- Document font style options (Default/Serif/Mono) in the `...` page settings menu apply `font-serif` or `font-mono` class to editor container
+
 ### Documents (Editor)
-- Tiptap editor with extensions: StarterKit, Placeholder, TaskList, TaskItem, Link, Highlight, TextAlign, Underline, Image, TextStyle, Color, Table, Callout (custom), Toggle (custom), TableOfContents (custom), SlashCommand
-- **Slash command menu** (`slash-command.tsx`) — type `/` to open a floating command palette with block types (Text, H1-H3, lists, quote, code block, divider, callout, image, table, toggle, Table of Contents). Uses `@tiptap/suggestion` for trigger detection, keyboard nav, and popup positioning.
+- Tiptap editor with extensions: StarterKit (heading disabled), ToggleableHeading, Placeholder, TaskList, TaskItem, Link, Highlight (multicolor), TextAlign, Underline, Image, TextStyle, Color, Table, Callout (custom), Toggle (custom), TableOfContents (custom), Columns (custom), MathBlock/MathInline (KaTeX), DateMention, AudioBlock, VideoBlock, BookmarkBlock, LinkToPage, Mention (pages), UserMention (workspace members), Embed, Youtube, Markdown, SlashCommand
+- **Slash command menu** (`slash-command.tsx`) — type `/` to open a floating command palette with block types (Text, H1-H3, Toggle H1-H3, lists, quote, code block, divider, callout, image, YouTube, embed, audio, video, bookmark, equation, link to page, table, toggle, TOC, columns, colors, backgrounds, mentions, date). Uses `@tiptap/suggestion` for trigger detection, keyboard nav, and popup positioning.
+- **Background highlight colors** — 10 Notion-style background tint colors via `@tiptap/extension-highlight` multicolor mode. Colors defined in `lib/colors.ts` (`HIGHLIGHT_BACKGROUND_COLORS`). Background color picker in toolbar (`PaintBucket` icon) + "Background" slash command category.
+- **Math/Equation blocks** (`math-extension.tsx`) — KaTeX LaTeX rendering with `katex` package. Two variants: `mathBlock` (centered display mode) and `mathInline` (inline). Dual edit/display mode — click to edit LaTeX, Ctrl+Enter to save. CSS in globals.css under `.math-*`.
+- **Date mentions** (`date-mention-extension.tsx`) — Inline date node with shadcn Calendar popover. Uses `date-fns` format. Replaces old plain-text date slash command.
+- **Audio/Video blocks** (`audio-extension.tsx`, `video-extension.tsx`) — HTML5 `<audio>` and `<video>` players. URL input form (https-only validation). Follow embed-extension pattern.
+- **Bookmark link previews** (`bookmark-extension.tsx`) — Rich URL preview cards with favicon, title, description, OG image. Server-side metadata fetching via `convex/bookmarks.ts` action. 5-second timeout.
+- **Toggleable headings** (`toggleable-heading-extension.tsx`) — Extends `@tiptap/extension-heading` with `isToggle`/`isOpen` attributes. Chevron toggle button on hover. ProseMirror decoration plugin hides sibling nodes when collapsed (`.heading-collapsed-content { display: none }`). StarterKit configured with `heading: false`.
+- **Link to Page blocks** (`link-to-page-extension.tsx`) — Full-width card linking to another document (icon + title + arrow). Page picker with search, reuses mention docs data. Module-level `getDocsFn` set by editor via `setLinkToPageDocsFn()`.
+- **User @mentions** (`user-mention-extension.tsx`) — `#` trigger for workspace member mentions. Shows "People" dropdown with avatars. Module-level `latestMentionUsers` store. Separate from page `@` mentions.
 - **Callout extension** (`callout-extension.ts`) — custom Tiptap block node with styled info box (left border + background tint + emoji icon). Supports `setCallout()` and `toggleCallout()` commands.
 - **Table of Contents extension** (`toc-extension.tsx`) — custom Tiptap atom node with React NodeView. Auto-scans document for headings (h1-h3) and renders a clickable TOC. Updates in real-time as headings change. Styled via `.toc-block` in `globals.css`. Uses `Editor` type from `@tiptap/core` (not inline types) for the NodeView component prop.
 - Debounce content saves to Convex (500ms delay)
@@ -339,6 +365,7 @@ Required in `.env.local`:
 - **Use `useAuth()` from `@clerk/nextjs`** — not `useConvexAuth()` — to check auth state in layout guards. `useConvexAuth` depends on the Convex client being initialized, which fails during build prerender.
 
 ### Convex
+- **Module paths cannot contain hyphens** — Convex module filenames may only contain alphanumeric characters, underscores, or periods. Use `camelCase` (e.g., `documentVersions.ts`) not `kebab-case` (e.g., `document-versions.ts`). Hyphens cause `InvalidConfig` errors on push.
 - **Clerk JWT Template required** — You must create a JWT Template named "convex" in Clerk Dashboard → JWT Templates → New template → Convex. Without it, `ConvexProviderWithClerk` calls `getToken({ template: "convex" })` which returns `null`, and every Convex function sees the user as unauthenticated. The Issuer URL on the template must match `CLERK_JWT_ISSUER_DOMAIN`.
 - **`CLERK_JWT_ISSUER_DOMAIN` must include `https://` prefix** — Set in Convex Dashboard → Environment Variables (not `.env.local`). Value: `https://<your-clerk-domain>.clerk.accounts.dev`. Without the prefix, `getUserIdentity()` returns `null` and all auth checks fail.
 - **Convex env vars are separate from `.env.local`** — `process.env` in Convex functions reads from the Convex Dashboard environment variables, not from the local `.env.local` file. Set `CLERK_JWT_ISSUER_DOMAIN` and `CLERK_WEBHOOK_SECRET` in the Convex Dashboard.

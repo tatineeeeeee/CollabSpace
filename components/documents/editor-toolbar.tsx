@@ -35,7 +35,9 @@ import {
   ImageIcon,
   Palette,
   Table,
+  PaintBucket,
 } from "lucide-react";
+import { HIGHLIGHT_BACKGROUND_COLORS } from "@/lib/colors";
 
 interface EditorToolbarProps {
   editor: Editor;
@@ -57,6 +59,8 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [colorOpen, setColorOpen] = useState(false);
+  const [bgColorOpen, setBgColorOpen] = useState(false);
+  const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
 
   const getBlockType = () => {
     if (editor.isActive("heading", { level: 1 })) return "h1";
@@ -313,6 +317,46 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       >
         <Table className="h-4 w-4" />
       </Toggle>
+
+      {/* Background Highlight Color */}
+      <Popover open={bgColorOpen} onOpenChange={setBgColorOpen}>
+        <PopoverTrigger asChild>
+          <Toggle
+            size="sm"
+            pressed={editor.isActive("highlight")}
+            onPressedChange={() => setBgColorOpen(!bgColorOpen)}
+            aria-label="Background color"
+          >
+            <PaintBucket className="h-4 w-4" />
+          </Toggle>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-2" align="start">
+          <div className="grid grid-cols-5 gap-1">
+            {HIGHLIGHT_BACKGROUND_COLORS.map((hc) => (
+              <button
+                type="button"
+                key={hc.name}
+                title={hc.name}
+                onClick={() => {
+                  if (hc.color) {
+                    const color = isDark && "dark" in hc ? hc.dark : hc.color;
+                    editor.chain().focus().toggleHighlight({ color }).run();
+                  } else {
+                    editor.chain().focus().unsetHighlight().run();
+                  }
+                  setBgColorOpen(false);
+                }}
+                className="flex h-7 w-7 items-center justify-center rounded-md border transition-colors hover:scale-110"
+                style={{ backgroundColor: hc.color || undefined }}
+              >
+                {!hc.color && (
+                  <span className="text-xs text-muted-foreground">A</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
 
       {/* Text Color */}
       <Popover open={colorOpen} onOpenChange={setColorOpen}>

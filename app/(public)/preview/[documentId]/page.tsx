@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
+import { IconRenderer } from "@/components/shared/icon-renderer";
 import type { Id } from "@/convex/_generated/dataModel";
 import { isSafeCoverValue } from "@/lib/utils";
 
@@ -82,8 +83,8 @@ export default function PreviewPage() {
 
       <div className="px-10 md:px-16">
         {document.icon && (
-          <div className={safeCover ? "-mt-7" : "mt-6"}>
-            <span className="text-6xl">{document.icon}</span>
+          <div className={safeCover ? "-mt-16" : "mt-6"}>
+            <IconRenderer icon={document.icon} className="h-30 w-30 text-[120px]" />
           </div>
         )}
         <h1 className="mt-4 text-4xl font-bold">{document.title}</h1>

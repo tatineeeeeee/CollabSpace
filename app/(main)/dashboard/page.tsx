@@ -25,6 +25,7 @@ import {
   ArrowRight,
   Activity,
 } from "lucide-react";
+import { IconRenderer } from "@/components/shared/icon-renderer";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -188,7 +189,7 @@ export default function DashboardPage() {
                       className="flex items-center gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
                     >
                       <span className="shrink-0">
-                        {doc.icon || <FileText className="h-4 w-4 text-muted-foreground" />}
+                        <IconRenderer icon={doc.icon ?? ""} className="h-4 w-4 text-sm" fallback={<FileText className="h-4 w-4 text-muted-foreground" />} />
                       </span>
                       <span className="flex-1 truncate">{doc.title}</span>
                       <span className="shrink-0 text-xs text-muted-foreground">
@@ -236,7 +237,7 @@ export default function DashboardPage() {
                       className="flex items-center gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
                     >
                       <span className="shrink-0">
-                        {board.icon || <Kanban className="h-4 w-4 text-muted-foreground" />}
+                        <IconRenderer icon={board.icon ?? ""} className="h-4 w-4 text-sm" fallback={<Kanban className="h-4 w-4 text-muted-foreground" />} />
                       </span>
                       <span className="flex-1 truncate">{board.title}</span>
                       <span className="shrink-0 text-xs text-muted-foreground">

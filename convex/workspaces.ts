@@ -266,12 +266,19 @@ export const remove = mutation({
       await ctx.db.delete(board._id);
     }
 
-    // 4. Documents
+    // 4. Documents + Document Versions
     const documents = await ctx.db
       .query("documents")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", args.id))
       .collect();
     for (const doc of documents) {
+      const versions = await ctx.db
+        .query("documentVersions")
+        .withIndex("by_document", (q) => q.eq("documentId", doc._id))
+        .collect();
+      for (const version of versions) {
+        await ctx.db.delete(version._id);
+      }
       await ctx.db.delete(doc._id);
     }
 

@@ -29,6 +29,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useTheme } from "next-themes";
+import { IconRenderer } from "@/components/shared/icon-renderer";
 import { cn } from "@/lib/utils";
 import { useSidebarStore } from "@/hooks/use-sidebar";
 import { useWorkspaceStore } from "@/hooks/use-workspace";
@@ -119,9 +120,9 @@ function FavoritesSection({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       <Separator className="my-2" />
-      <div className="px-3 py-1">
-        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
-          <Star className="h-3 w-3" />
+      <div className="flex items-center gap-1.5 rounded-md px-2 py-1">
+        <Star className="h-3 w-3 text-muted-foreground" />
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Favorites
         </span>
       </div>
@@ -137,15 +138,11 @@ function FavoritesSection({ onNavigate }: { onNavigate?: () => void }) {
                 onNavigate?.();
               }}
               className={cn(
-                "flex min-h-7 w-full items-center gap-1.5 rounded-sm px-3 py-1 text-sm text-muted-foreground hover:bg-accent/50",
+                "flex min-h-8 w-full items-center gap-2 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent/50",
                 isActive && "bg-accent text-accent-foreground"
               )}
             >
-              {fav.icon ? (
-                <span className="shrink-0 text-sm">{fav.icon}</span>
-              ) : (
-                <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-              )}
+              <IconRenderer icon={fav.icon ?? ""} className="h-4 w-4 shrink-0 text-sm" fallback={<FileText className="h-4 w-4 shrink-0 text-muted-foreground" />} />
               <span className="truncate">{fav.title}</span>
             </button>
           );
@@ -194,42 +191,39 @@ function SidebarContent({
 
       <Separator />
 
-      <div className="flex-1 overflow-y-auto px-3 py-3">
-        <div className="mb-2">
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-2 text-muted-foreground"
-            size="sm"
-            onClick={openSearch}
-          >
-            <Search className="h-4 w-4" />
-            Search
-            <kbd className="ml-auto rounded border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-              {isMac ? "⌘K" : "Ctrl+K"}
-            </kbd>
-          </Button>
-        </div>
+      <div className="flex-1 overflow-y-auto px-2 py-2">
+        {/* Search — compact trigger */}
+        <button
+          type="button"
+          onClick={openSearch}
+          className="mb-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent/50"
+        >
+          <Search className="h-4 w-4 shrink-0" />
+          <span className="flex-1 text-left">Search</span>
+          <kbd className="rounded border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+            {isMac ? "⌘K" : "Ctrl+K"}
+          </kbd>
+        </button>
 
-        <Separator className="my-2" />
-
-        <nav className="flex flex-col gap-1">
+        {/* Navigation */}
+        <nav className="mt-1 flex flex-col gap-0.5">
           {routes.map((route) => {
             const isActive =
               pathname === route.href ||
               pathname.startsWith(route.href + "/");
             return (
               <Link key={route.href} href={route.href} onClick={onNavigate}>
-                <Button
-                  variant={isActive ? "secondary" : "ghost"}
+                <div
                   className={cn(
-                    "w-full justify-start gap-2",
-                    isActive && "font-medium"
+                    "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent/50",
+                    isActive
+                      ? "bg-accent font-medium text-accent-foreground"
+                      : "text-muted-foreground"
                   )}
-                  size="sm"
                 >
-                  <route.icon className="h-4 w-4" />
+                  <route.icon className="h-4 w-4 shrink-0" />
                   {route.label}
-                </Button>
+                </div>
               </Link>
             );
           })}
@@ -239,18 +233,19 @@ function SidebarContent({
 
         <Separator className="my-2" />
 
-        <div className="flex items-center justify-between px-3 py-1">
-          <span className="text-xs font-semibold uppercase text-muted-foreground">
+        {/* Documents section header — hover reveals + button */}
+        <div className="group/docs flex items-center justify-between rounded-md px-2 py-1">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Documents
           </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5"
+          <button
+            type="button"
+            className="flex h-5 w-5 items-center justify-center rounded-sm opacity-0 transition-opacity hover:bg-accent group-hover/docs:opacity-100"
             onClick={() => setTemplatePickerOpen(true)}
+            aria-label="New document"
           >
-            <Plus className="h-3.5 w-3.5" />
-          </Button>
+            <Plus className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
         </div>
 
         <DocumentList level={0} />
@@ -259,14 +254,13 @@ function SidebarContent({
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-2 text-muted-foreground"
-              size="sm"
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent/50"
             >
-              <Trash className="h-4 w-4" />
+              <Trash className="h-4 w-4 shrink-0" />
               Trash
-            </Button>
+            </button>
           </PopoverTrigger>
           <PopoverContent className="w-72 p-2" side="right" align="start">
             <TrashBox />

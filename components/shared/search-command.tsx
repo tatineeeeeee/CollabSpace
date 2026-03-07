@@ -16,6 +16,7 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { FileText, Kanban } from "lucide-react";
+import { IconRenderer } from "@/components/shared/icon-renderer";
 import type { Id } from "@/convex/_generated/dataModel";
 
 export function SearchCommand() {
@@ -90,11 +91,7 @@ export function SearchCommand() {
                 value={`${doc._id}-${doc.title}`}
                 onSelect={() => handleSelect(`/documents/${doc._id}`)}
               >
-                {doc.icon ? (
-                  <span className="text-sm">{doc.icon}</span>
-                ) : (
-                  <FileText className="h-4 w-4" />
-                )}
+                <IconRenderer icon={doc.icon ?? ""} className="h-4 w-4 text-sm" fallback={<FileText className="h-4 w-4" />} />
                 <span>{doc.title}</span>
               </CommandItem>
             ))}
@@ -108,11 +105,7 @@ export function SearchCommand() {
                 value={`${board._id}-${board.title}`}
                 onSelect={() => handleSelect(`/boards/${board._id}`)}
               >
-                {board.icon ? (
-                  <span className="text-sm">{board.icon}</span>
-                ) : (
-                  <Kanban className="h-4 w-4" />
-                )}
+                <IconRenderer icon={board.icon ?? ""} className="h-4 w-4 text-sm" fallback={<Kanban className="h-4 w-4" />} />
                 <span>{board.title}</span>
               </CommandItem>
             ))}

@@ -52,6 +52,11 @@ export const update = mutation({
     title: v.optional(v.string()),
     icon: v.optional(v.string()),
     coverImage: v.optional(v.string()),
+    isFullWidth: v.optional(v.boolean()),
+    isSmallText: v.optional(v.boolean()),
+    fontStyle: v.optional(
+      v.union(v.literal("default"), v.literal("serif"), v.literal("mono"))
+    ),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -70,6 +75,9 @@ export const update = mutation({
     if (args.title !== undefined) updates.title = args.title;
     if (args.icon !== undefined) updates.icon = args.icon;
     if (args.coverImage !== undefined) updates.coverImage = args.coverImage;
+    if (args.isFullWidth !== undefined) updates.isFullWidth = args.isFullWidth;
+    if (args.isSmallText !== undefined) updates.isSmallText = args.isSmallText;
+    if (args.fontStyle !== undefined) updates.fontStyle = args.fontStyle;
 
     await ctx.db.patch(args.id, updates);
 
@@ -101,6 +109,29 @@ export const updateContent = mutation({
     if (!membership) throw new Error("Not a member of this workspace");
 
     if (args.content.length > 500_000) throw new Error("Content too large");
+
+    // Auto-snapshot for version history (rate-limited to 1 per 5 min)
+    if (document.content) {
+      const latestVersion = await ctx.db
+        .query("documentVersions")
+        .withIndex("by_document_created", (q) =>
+          q.eq("documentId", args.id)
+        )
+        .order("desc")
+        .first();
+
+      const fiveMinutes = 5 * 60 * 1000;
+      if (!latestVersion || Date.now() - latestVersion.createdAt >= fiveMinutes) {
+        await ctx.db.insert("documentVersions", {
+          documentId: args.id,
+          content: document.content,
+          title: document.title,
+          userId: user._id,
+          userName: user.name,
+          createdAt: Date.now(),
+        });
+      }
+    }
 
     await ctx.db.patch(args.id, {
       content: args.content,
@@ -483,5 +514,67 @@ export const getRecent = query({
     return documents
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, limit);
+  },
+});
+
+export const getForMention = query({
+  args: { workspaceId: v.id("workspaces") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const user = await getAuthenticatedUser(ctx);
+    if (!user) return [];
+
+    const membership = await verifyMembership(ctx, user._id, args.workspaceId);
+    if (!membership) return [];
+
+    const documents = await ctx.db
+      .query("documents")
+      .withIndex("by_workspace_archived", (q) =>
+        q.eq("workspaceId", args.workspaceId).eq("isArchived", false)
+      )
+      .take(500);
+
+    return documents.map((doc) => ({
+      id: doc._id as string,
+      title: doc.title,
+      icon: doc.icon,
+    }));
+  },
+});
+
+export const getBacklinks = query({
+  args: {
+    documentId: v.id("documents"),
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const user = await getAuthenticatedUser(ctx);
+    if (!user) return [];
+
+    const membership = await verifyMembership(ctx, user._id, args.workspaceId);
+    if (!membership) return [];
+
+    const documents = await ctx.db
+      .query("documents")
+      .withIndex("by_workspace_archived", (q) =>
+        q.eq("workspaceId", args.workspaceId).eq("isArchived", false)
+      )
+      .take(500);
+
+    // Fast string-includes check — document IDs won't appear accidentally in content
+    const docIdStr = args.documentId as string;
+    return documents
+      .filter(
+        (doc) =>
+          doc._id !== args.documentId &&
+          doc.content &&
+          doc.content.includes(docIdStr)
+      )
+      .map((doc) => ({ _id: doc._id, title: doc.title, icon: doc.icon }));
   },
 });

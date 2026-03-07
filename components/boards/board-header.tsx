@@ -17,6 +17,7 @@ import {
 import { IconPicker } from "@/components/shared/icon-picker";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { ArrowLeft, Menu, MoreHorizontal, Paintbrush, Smile, Trash, X } from "lucide-react";
+import { IconRenderer } from "@/components/shared/icon-renderer";
 import { useSidebarStore } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
 import { BOARD_COLORS } from "@/lib/colors";
@@ -128,9 +129,9 @@ export function BoardHeader({ board }: BoardHeaderProps) {
       {/* Icon */}
       {board.icon ? (
         <div className="group/icon relative">
-          <IconPicker onChange={handleIconChange} asChild>
+          <IconPicker onChange={handleIconChange} onRemove={() => update({ id: board._id, icon: "" })} asChild>
             <button className="text-xl transition-opacity hover:opacity-80">
-              {board.icon}
+              <IconRenderer icon={board.icon} className="h-5 w-5 text-xl" />
             </button>
           </IconPicker>
           <button

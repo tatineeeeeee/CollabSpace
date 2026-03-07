@@ -12,6 +12,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { IconRenderer } from "@/components/shared/icon-renderer";
 import type { Id } from "@/convex/_generated/dataModel";
 
 interface DocumentBreadcrumbProps {
@@ -39,13 +40,13 @@ export function DocumentBreadcrumb({ documentId }: DocumentBreadcrumbProps) {
               <BreadcrumbItem>
                 {isLast ? (
                   <BreadcrumbPage>
-                    {ancestor.icon && <span className="mr-1">{ancestor.icon}</span>}
+                    {ancestor.icon && <IconRenderer icon={ancestor.icon} className="mr-1 inline-flex h-4 w-4 text-sm" />}
                     {ancestor.title}
                   </BreadcrumbPage>
                 ) : (
                   <BreadcrumbLink asChild>
                     <Link href={`/documents/${ancestor._id}`}>
-                      {ancestor.icon && <span className="mr-1">{ancestor.icon}</span>}
+                      {ancestor.icon && <IconRenderer icon={ancestor.icon} className="mr-1 inline-flex h-4 w-4 text-sm" />}
                       {ancestor.title}
                     </Link>
                   </BreadcrumbLink>

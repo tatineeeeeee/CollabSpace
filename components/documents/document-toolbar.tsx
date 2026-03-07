@@ -7,14 +7,16 @@ import { Button } from "@/components/ui/button";
 import { IconPicker } from "@/components/shared/icon-picker";
 import { CoverPicker } from "@/components/documents/cover-image";
 import { ImageIcon, Smile, X } from "lucide-react";
+import { IconRenderer } from "@/components/shared/icon-renderer";
 import { cn } from "@/lib/utils";
 import type { Doc } from "@/convex/_generated/dataModel";
 
 interface DocumentToolbarProps {
   document: Doc<"documents">;
+  isFullWidth?: boolean;
 }
 
-export function DocumentToolbar({ document }: DocumentToolbarProps) {
+export function DocumentToolbar({ document, isFullWidth }: DocumentToolbarProps) {
   const update = useMutation(api.documents.update);
 
   const [localTitle, setLocalTitle] = useState<string | null>(null);
@@ -53,18 +55,18 @@ export function DocumentToolbar({ document }: DocumentToolbarProps) {
   };
 
   return (
-    <div className={cn("px-10 md:px-16", !hasCover && "pt-6")}>
+    <div className={cn("relative z-10 w-full px-6 md:px-16 lg:px-24", !hasCover && "pt-8")}>
       {/* Icon — large, overlaps cover when present */}
       {document.icon && (
         <div
           className={cn(
             "group/icon relative w-fit",
-            hasCover ? "-mt-7" : "mt-0"
+            hasCover ? "-mt-16" : "mt-0"
           )}
         >
-          <IconPicker onChange={handleIconChange} asChild>
-            <button className="text-6xl transition-opacity hover:opacity-80">
-              {document.icon}
+          <IconPicker onChange={handleIconChange} onRemove={() => update({ id: document._id, icon: "" })} asChild>
+            <button className="transition-opacity hover:opacity-80">
+              <IconRenderer icon={document.icon!} className="h-30 w-30 text-[120px]" />
             </button>
           </IconPicker>
           <button
@@ -85,8 +87,8 @@ export function DocumentToolbar({ document }: DocumentToolbarProps) {
         onBlur={handleTitleSubmit}
         onKeyDown={handleTitleKeyDown}
         className={cn(
-          "w-full bg-transparent text-4xl font-bold outline-none placeholder:text-muted-foreground/50",
-          document.icon ? "mt-1" : hasCover ? "mt-4" : "mt-0"
+          "w-full bg-transparent text-5xl font-bold outline-none placeholder:text-muted-foreground/30",
+          document.icon ? "mt-2" : hasCover ? "mt-6" : "mt-0"
         )}
         placeholder="Untitled"
       />
