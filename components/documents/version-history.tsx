@@ -19,9 +19,11 @@ import type { Id } from "@/convex/_generated/dataModel";
 
 interface VersionHistoryProps {
   documentId: Id<"documents">;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function VersionHistory({ documentId }: VersionHistoryProps) {
+export function VersionHistory({ documentId, open, onOpenChange }: VersionHistoryProps) {
   const versions = useQuery(api.documentVersions.getByDocument, { documentId });
   const restore = useMutation(api.documentVersions.restore);
   const [selectedId, setSelectedId] = useState<Id<"documentVersions"> | null>(
@@ -45,13 +47,15 @@ export function VersionHistory({ documentId }: VersionHistoryProps) {
   };
 
   return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 gap-1.5">
-          <History className="h-4 w-4" />
-          <span className="hidden sm:inline">History</span>
-        </Button>
-      </SheetTrigger>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      {open === undefined && (
+        <SheetTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-8 gap-1.5">
+            <History className="h-4 w-4" />
+            <span className="hidden sm:inline">History</span>
+          </Button>
+        </SheetTrigger>
+      )}
       <SheetContent className="flex w-[400px] flex-col sm:max-w-[400px]">
         <SheetHeader>
           <SheetTitle>Version History</SheetTitle>

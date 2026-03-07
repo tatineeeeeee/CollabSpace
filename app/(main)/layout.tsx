@@ -115,7 +115,7 @@ export default function MainLayout({
 }
 
 function AppShell({ children }: { children: React.ReactNode }) {
-  const { collapsed, toggle, setMobileOpen } = useSidebarStore();
+  const { collapsed, setMobileOpen } = useSidebarStore();
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -126,22 +126,10 @@ function AppShell({ children }: { children: React.ReactNode }) {
           collapsed && "md:-ml-60"
         )}
       >
-        {/* Top bar — visible when sidebar collapsed (desktop) or always (mobile) */}
-        <header
-          className={cn(
-            "flex h-12 shrink-0 items-center border-b px-4",
-            collapsed ? "md:flex" : "md:hidden"
-          )}
-        >
+        {/* Top bar — mobile only (pages provide their own hamburger on desktop) */}
+        <header className="flex h-12 shrink-0 items-center border-b px-4 md:hidden">
           <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Toggle sidebar" onClick={() => {
-            // Desktop: toggle sidebar, Mobile: open sheet
-            // Check matchMedia for SSR-safe breakpoint detection
-            const isDesktop = typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches;
-            if (isDesktop) {
-              toggle();
-            } else {
-              setMobileOpen(true);
-            }
+            setMobileOpen(true);
           }}>
             <Menu className="h-5 w-5" />
           </Button>

@@ -33,12 +33,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BlockHandle } from "./block-handle";
-import { EditorFooter } from "./editor-footer";
 import { SlashCommand } from "./slash-command";
 import Youtube from "@tiptap/extension-youtube";
 import { Markdown } from "tiptap-markdown";
 import { Embed } from "./embed-extension";
-import { ExportMenu } from "./export-menu";
 import { Callout } from "./callout-extension";
 import { ToggleDetails, ToggleSummary } from "./toggle-extension";
 import { TableOfContents } from "./toc-extension";
@@ -54,6 +52,7 @@ import { createMentionExtension } from "./mention-extension";
 import type { MentionDocument } from "./mention-extension";
 import { createUserMentionExtension } from "./user-mention-extension";
 import type { MentionUser } from "./user-mention-extension";
+import type { Editor as EditorType } from "@tiptap/core";
 import type { Id } from "@/convex/_generated/dataModel";
 
 // Module-level stores — updated by effect, read by ProseMirror plugins (not during render)
@@ -66,8 +65,8 @@ interface EditorProps {
   title?: string;
   initialContent?: string;
   editable?: boolean;
-  lastEditedBy?: string;
-  lastEditedAt?: number;
+  onEditor?: (editor: EditorType | null) => void;
+  onWordCountChange?: (count: number) => void;
 }
 
 export function Editor({
@@ -76,8 +75,8 @@ export function Editor({
   title = "Untitled",
   initialContent,
   editable = true,
-  lastEditedBy,
-  lastEditedAt,
+  onEditor,
+  onWordCountChange,
 }: EditorProps) {
   const mentionDocs = useQuery(
     api.documents.getForMention,
@@ -134,6 +133,14 @@ export function Editor({
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">(
     "saved"
   );
+
+  const onEditorChange = useEffectEvent((e: EditorType | null) => {
+    onEditor?.(e);
+  });
+
+  const onWordCountUpdate = useEffectEvent((count: number) => {
+    onWordCountChange?.(count);
+  });
 
   const editor = useEditor({
     extensions: [
@@ -213,8 +220,13 @@ export function Editor({
       const text = editor.getText();
       const words = text.trim().split(/\s+/).filter(Boolean).length;
       setWordCount(words);
+      onWordCountUpdate(words);
     },
   });
+
+  useEffect(() => {
+    onEditorChange(editor);
+  }, [editor]);
 
   const onSaveContent = useEffectEvent(
     (debounced: string, docId: Id<"documents">, initial: string | undefined) => {
@@ -353,18 +365,6 @@ export function Editor({
       )}
       {editor && editable && <BlockHandle editor={editor} />}
       <EditorContent editor={editor} />
-      <div className="flex items-center justify-between">
-        {editable ? (
-          <EditorFooter wordCount={wordCount} saveStatus={saveStatus} lastEditedBy={lastEditedBy} lastEditedAt={lastEditedAt} />
-        ) : (
-          <div />
-        )}
-        {editor && (
-          <div className="shrink-0 pr-1">
-            <ExportMenu editor={editor} title={title} />
-          </div>
-        )}
-      </div>
     </div>
   );
 }

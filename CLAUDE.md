@@ -114,6 +114,7 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 - Follow shadcn/ui patterns for component styling (class-variance-authority + cn utility)
 - Use CSS variables for theming (defined in globals.css)
 - Support dark mode via `next-themes` and Tailwind's `dark:` prefix
+- **Notion-style dark theme** — dark mode uses Notion's exact color palette: page background `#191919`, sidebar `#171717`, cards/popovers `#252525`, hover `#3F4448`, muted `#2c2c2c`. Text uses warm grays (`oklch` with slight warm chroma at hue 85-90) matching Notion's `rgb(240,239,237)` foreground and `rgb(188,186,182)` sidebar text.
 
 ### State Management
 - Server state: Convex `useQuery()` and `useMutation()` — no need for React Query or SWR
@@ -172,7 +173,10 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 - Content stored as stringified Tiptap JSON
 - Support nested documents via `parentDocumentId` self-reference
 - Persistent toolbar (`editor-toolbar.tsx`) with heading select, inline formatting, lists, alignment, highlight, code, and link insertion
-- Editor footer (`editor-footer.tsx`) shows word count, save status ("Saved" / "Saving..." / "Unsaved changes"), and "Last edited by {name} {time}" when available
+- **Notion-style document top bar** — single 44px bar with: hamburger (desktop, shown when sidebar collapsed), page icon + title (truncated), "Edited X ago", Share popover (publish toggle + copy link), star/favorite, and "..." menu (publish, copy link, history, export, word count, layout options, duplicate, trash)
+- No publish banner or bottom footer — all actions consolidated into the top bar "..." menu and Share popover
+- Editor exposes instance via `onEditor` callback prop and word count via `onWordCountChange` — used by the document page for export and word count display in the "..." menu
+- Version History rendered in controlled mode (`open`/`onOpenChange` props) — triggered from "..." menu
 - Word count initialized via `useState` initializer (parse Tiptap JSON), updated in `onUpdate` callback
 - Save status managed via `useEffectEvent` (React 19.2) — replaces the old `useRef` callback pattern
 - Cover image picker supports gallery images, solid colors, gradients, custom URLs, and "Surprise me" random selection
@@ -206,7 +210,7 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 ### Favorites / Bookmarks
 - Separate `favorites` table (`userId`, `workspaceId`, `documentId`) — favorites are per-user, not per-document
 - `convex/favorites.ts` — `toggle` mutation, `getByWorkspace` query, `isFavorited` query
-- Star button on document pages (breadcrumb bar) — filled yellow when favorited
+- Star button on document pages (top bar) — filled yellow when favorited
 - "Favorites" section in sidebar between nav routes and "Documents" — hidden when empty
 - "Add to favorites" / "Remove from favorites" in document context menu (`document-item.tsx`)
 - Favorites joined with documents table to show title/icon; archived docs excluded

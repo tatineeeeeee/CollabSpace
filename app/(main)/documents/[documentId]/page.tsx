@@ -1,17 +1,22 @@
 "use client";
 
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { DocumentToolbar } from "@/components/documents/document-toolbar";
 import { CoverImage } from "@/components/documents/cover-image";
-import { PublishBanner } from "@/components/documents/publish-banner";
-import { DocumentBreadcrumb } from "@/components/documents/document-breadcrumb";
 import { BacklinksSection } from "@/components/documents/backlinks-section";
 import { VersionHistory } from "@/components/documents/version-history";
+import { IconRenderer } from "@/components/shared/icon-renderer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,18 +31,31 @@ import {
   AlertTriangle,
   Check,
   Copy,
+  Download,
+  FileCode,
+  FileText,
+  FileType,
+  Globe,
+  Hash,
+  History,
+  Link2,
+  Menu,
   MoveHorizontal,
   MoreHorizontal,
+  Share,
   Star,
   Trash2,
   Type,
   Undo,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
+import { downloadAsFile, sanitizeFilename } from "@/lib/export-utils";
+import { useSidebarStore } from "@/hooks/use-sidebar";
 import { toast } from "sonner";
+import type { Editor } from "@tiptap/core";
 import type { Id } from "@/convex/_generated/dataModel";
 
-const Editor = dynamic(
+const EditorComponent = dynamic(
   () =>
     import("@/components/documents/editor").then((mod) => ({
       default: mod.Editor,
@@ -66,7 +84,14 @@ export default function DocumentIdPage() {
   const archive = useMutation(api.documents.archive);
   const duplicateDoc = useMutation(api.documents.duplicate);
   const toggleFavorite = useMutation(api.favorites.toggle);
+  const togglePublish = useMutation(api.documents.togglePublish);
   const router = useRouter();
+  const { collapsed, toggle, setMobileOpen } = useSidebarStore();
+
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [editorInstance, setEditorInstance] = useState<Editor | null>(null);
+  const [wordCount, setWordCount] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   const handleRestore = async () => {
     try {
@@ -74,6 +99,64 @@ export default function DocumentIdPage() {
       toast.success("Document restored");
     } catch {
       toast.error("Failed to restore document");
+    }
+  };
+
+  const handleTogglePublish = async () => {
+    try {
+      const newState = await togglePublish({ id: document!._id });
+      toast.success(newState ? "Document published" : "Document unpublished");
+    } catch {
+      toast.error("Failed to update publish state");
+    }
+  };
+
+  const handleCopyLink = () => {
+    const url = `${window.location.origin}/preview/${document!._id}`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    toast.success("Link copied to clipboard");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleExport = (format: "markdown" | "html" | "text") => {
+    if (!editorInstance || !document) return;
+    const filename = sanitizeFilename(document.title);
+    if (format === "markdown") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const md = (editorInstance.storage as any).markdown?.getMarkdown?.() ?? editorInstance.getText();
+      downloadAsFile(md, `${filename}.md`, "text/markdown");
+    } else if (format === "html") {
+      const body = editorInstance.getHTML();
+      const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${document.title.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</title>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 768px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; color: #1a1a1a; }
+h1 { font-size: 2rem; margin-top: 2rem; }
+h2 { font-size: 1.5rem; margin-top: 1.5rem; }
+h3 { font-size: 1.25rem; margin-top: 1.25rem; }
+blockquote { border-left: 3px solid #d1d5db; padding-left: 1rem; color: #6b7280; margin: 1rem 0; }
+pre { background: #f3f4f6; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; }
+code { background: #f3f4f6; padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-size: 0.875em; }
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+th, td { border: 1px solid #d1d5db; padding: 0.5rem; text-align: left; }
+th { background: #f3f4f6; font-weight: 600; }
+img { max-width: 100%; border-radius: 0.5rem; }
+ul[data-type="taskList"] { list-style: none; padding-left: 0; }
+ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 0.5rem; }
+</style>
+</head>
+<body>
+${body}
+</body>
+</html>`;
+      downloadAsFile(html, `${filename}.html`, "text/html");
+    } else {
+      downloadAsFile(editorInstance.getText(), `${filename}.txt`, "text/plain");
     }
   };
 
@@ -121,12 +204,82 @@ export default function DocumentIdPage() {
         </div>
       )}
 
-      {!document.isArchived && <PublishBanner document={document} />}
+      {/* Notion-style top bar */}
+      <div className="flex h-11 items-center justify-between overflow-hidden border-b pl-3 pr-2.5">
+        {/* Left: hamburger + icon + title */}
+        <div className="flex min-w-0 items-center gap-2">
+          {collapsed && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden h-7 w-7 shrink-0 md:flex"
+              aria-label="Toggle sidebar"
+              onClick={toggle}
+            >
+              <Menu className="h-[18px] w-[18px] text-muted-foreground" strokeWidth={1.75} />
+            </Button>
+          )}
+          {document.icon && (
+            <IconRenderer icon={document.icon} className="h-5 w-5 shrink-0 text-lg" />
+          )}
+          <span className="truncate text-sm">
+            {document.title || "Untitled"}
+          </span>
+          {document.isPublished && (
+            <span className="flex shrink-0 items-center gap-1 rounded-sm bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
+              <Globe className="h-3 w-3" />
+              Published
+            </span>
+          )}
+        </div>
 
-      <div className="flex items-center justify-between border-b px-4 py-2">
-        <DocumentBreadcrumb documentId={documentId} />
-        <div className="flex items-center gap-1">
-          <VersionHistory documentId={documentId} />
+        {/* Right: edited time + share + star + more menu */}
+        <div className="flex shrink-0 items-center gap-1">
+          <span className="hidden text-xs text-muted-foreground sm:inline">
+            Edited {formatRelativeTime(document.updatedAt ?? document._creationTime)}
+          </span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-sm">
+                <Share className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Share</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-72">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Globe className="h-4 w-4" />
+                    Publish to web
+                  </div>
+                  <Button
+                    variant={document.isPublished ? "default" : "outline"}
+                    size="sm"
+                    className="h-7"
+                    onClick={handleTogglePublish}
+                  >
+                    {document.isPublished ? "Published" : "Publish"}
+                  </Button>
+                </div>
+                {document.isPublished && (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      Anyone with the link can view this document.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1.5"
+                      onClick={handleCopyLink}
+                    >
+                      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                      {copied ? "Copied!" : "Copy link"}
+                    </Button>
+                  </>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
           <Button
             variant="ghost"
             size="icon"
@@ -155,6 +308,60 @@ export default function DocumentIdPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
+              {/* Publish / Unpublish */}
+              <DropdownMenuItem onClick={handleTogglePublish}>
+                <Globe className="mr-2 h-4 w-4" />
+                {document.isPublished ? "Unpublish" : "Publish"}
+              </DropdownMenuItem>
+              {document.isPublished && (
+                <DropdownMenuItem onClick={handleCopyLink}>
+                  <Link2 className="mr-2 h-4 w-4" />
+                  {copied ? "Copied!" : "Copy link"}
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              {/* History */}
+              <DropdownMenuItem onClick={() => setHistoryOpen(true)}>
+                <History className="mr-2 h-4 w-4" />
+                History
+              </DropdownMenuItem>
+              {/* Export */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem
+                    onClick={() => handleExport("markdown")}
+                    disabled={!editorInstance}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Markdown (.md)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleExport("html")}
+                    disabled={!editorInstance}
+                  >
+                    <FileCode className="mr-2 h-4 w-4" />
+                    HTML (.html)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleExport("text")}
+                    disabled={!editorInstance}
+                  >
+                    <FileType className="mr-2 h-4 w-4" />
+                    Plain Text (.txt)
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              {/* Word count */}
+              <DropdownMenuItem disabled className="text-muted-foreground">
+                <Hash className="mr-2 h-4 w-4" />
+                {wordCount} {wordCount === 1 ? "word" : "words"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {/* Layout options */}
               <DropdownMenuItem
                 onClick={() =>
                   update({
@@ -256,6 +463,13 @@ export default function DocumentIdPage() {
         </div>
       </div>
 
+      {/* Version History Sheet (controlled) */}
+      <VersionHistory
+        documentId={documentId}
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+      />
+
       <div className="group pb-40">
         <CoverImage
           url={document.coverImage}
@@ -279,14 +493,14 @@ export default function DocumentIdPage() {
               document.fontStyle === "mono" && "font-mono"
             )}
           >
-            <Editor
+            <EditorComponent
               documentId={document._id}
               workspaceId={document.workspaceId}
               title={document.title}
               initialContent={document.content}
               editable={!document.isArchived}
-              lastEditedBy={document.lastEditedByName}
-              lastEditedAt={document.updatedAt}
+              onEditor={setEditorInstance}
+              onWordCountChange={setWordCount}
             />
             <BacklinksSection
               documentId={document._id}
