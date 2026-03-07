@@ -123,7 +123,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
       <div
         className={cn(
           "flex flex-1 flex-col overflow-hidden transition-[margin] duration-200 ease-in-out",
-          collapsed && "md:-ml-60"
+          collapsed && "md:-ml-55"
         )}
       >
         {/* Top bar — mobile only (pages provide their own hamburger on desktop) */}

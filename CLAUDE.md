@@ -402,6 +402,7 @@ Required in `.env.local`:
 ### Tailwind v4
 - **`bg-linear-to-*` not `bg-gradient-to-*`** — Tailwind v4 uses the canonical `bg-linear-to-br`, `bg-linear-to-b` etc. instead of the v3 `bg-gradient-to-*` shorthand.
 - **shadcn `--overwrite` flag** — When adding shadcn components that already exist, use `bunx shadcn@latest add <component> --overwrite` (not `-y`, which triggers interactive prompts).
+- **CSS variable changes may not hot-reload on Windows** — Tailwind v4 + Turbopack on Windows sometimes fails to HMR when CSS variables/theme values in `globals.css` are changed. A manual browser refresh (`F5`) is needed. Component and logic changes hot-reload normally.
 
 ### Landing Page & Auth
 - **Never use `<SignInButton mode="modal">`** in the navbar — it opens a Clerk popup and bypasses the custom auth page. Use `<Link href="/sign-in">` instead.

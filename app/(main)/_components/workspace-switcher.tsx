@@ -75,18 +75,9 @@ export function WorkspaceSwitcher() {
             className="w-full justify-between px-2 font-normal"
             size="sm"
           >
-            <div className="flex min-w-0 items-center gap-2">
-              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary text-[10px] font-bold text-primary-foreground">
-                {activeWorkspace?.icon ? (
-                  <IconRenderer icon={activeWorkspace.icon} className="text-sm leading-none" />
-                ) : activeWorkspace?.name?.[0]?.toUpperCase() ?? (
-                  <Building2 className="h-3 w-3" />
-                )}
-              </div>
-              <span className="truncate text-sm">
-                {activeWorkspace?.name ?? "Select workspace"}
-              </span>
-            </div>
+            <span className="truncate text-sm">
+              {activeWorkspace?.name ?? "Select workspace"}
+            </span>
             <ChevronsUpDown className="ml-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           </Button>
         </DropdownMenuTrigger>

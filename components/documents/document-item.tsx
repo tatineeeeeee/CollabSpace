@@ -66,7 +66,7 @@ export function DocumentItem({
       tabIndex={0}
       style={{ paddingLeft: `${level * 12 + 8}px` }}
       className={cn(
-        "group flex min-h-8 w-full cursor-pointer items-center gap-1 rounded-md py-1 pr-2 text-sm text-muted-foreground transition-colors hover:bg-accent/50",
+        "group flex min-h-8 w-full cursor-pointer items-center gap-1 rounded-md py-1 pr-2 text-muted-foreground transition-colors hover:bg-accent/50",
         active && "bg-accent text-accent-foreground"
       )}
     >

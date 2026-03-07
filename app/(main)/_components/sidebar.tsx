@@ -53,10 +53,13 @@ function SidebarHeader({ onCollapse }: { onCollapse?: () => void }) {
   const { user } = useUser();
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2.5">
+    <div className="flex items-center gap-0.5 px-3 py-2.5">
       <UserButton
         appearance={{
-          elements: { avatarBox: "h-6 w-6" },
+          elements: {
+            avatarBox: { width: 24, height: 24, borderRadius: 4 },
+            avatarImage: { borderRadius: 4 },
+          },
         }}
       />
       <div className="min-w-0 flex-1">
@@ -138,7 +141,7 @@ function FavoritesSection({ onNavigate }: { onNavigate?: () => void }) {
                 onNavigate?.();
               }}
               className={cn(
-                "flex min-h-8 w-full items-center gap-2 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent/50",
+                "flex min-h-8 w-full items-center gap-2 rounded-md px-2 py-1 text-muted-foreground transition-colors hover:bg-accent/50",
                 isActive && "bg-accent text-accent-foreground"
               )}
             >
@@ -191,12 +194,12 @@ function SidebarContent({
 
       <Separator />
 
-      <div className="flex-1 overflow-y-auto px-2 py-2">
+      <div className="sidebar-notion-font flex-1 overflow-y-auto px-2 py-2">
         {/* Search — compact trigger */}
         <button
           type="button"
           onClick={openSearch}
-          className="mb-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent/50"
+          className="mb-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 font-medium text-muted-foreground transition-colors hover:bg-accent/50"
         >
           <Search className="h-4 w-4 shrink-0" />
           <span className="flex-1 text-left">Search</span>
@@ -215,9 +218,9 @@ function SidebarContent({
               <Link key={route.href} href={route.href} onClick={onNavigate}>
                 <div
                   className={cn(
-                    "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent/50",
+                    "flex items-center gap-2 rounded-md px-2 py-1.5 font-medium transition-colors hover:bg-accent/50",
                     isActive
-                      ? "bg-accent font-medium text-accent-foreground"
+                      ? "bg-accent text-accent-foreground"
                       : "text-muted-foreground"
                   )}
                 >
@@ -256,7 +259,7 @@ function SidebarContent({
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent/50"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-muted-foreground transition-colors hover:bg-accent/50"
             >
               <Trash className="h-4 w-4 shrink-0" />
               Trash
@@ -289,7 +292,7 @@ export function Sidebar() {
       {/* Desktop sidebar — always rendered, slides via translateX */}
       <aside
         className={cn(
-          "hidden md:block h-full w-60 shrink-0 border-r bg-sidebar transition-transform duration-200 ease-in-out",
+          "hidden md:block h-full w-[220px] shrink-0 border-r bg-sidebar transition-transform duration-200 ease-in-out",
           collapsed && "-translate-x-full"
         )}
       >
@@ -298,7 +301,7 @@ export function Sidebar() {
 
       {/* Mobile sidebar (sheet) */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent side="left" className="w-60 p-0">
+        <SheetContent side="left" className="w-[220px] p-0">
           <SidebarContent onNavigate={() => setMobileOpen(false)} />
         </SheetContent>
       </Sheet>
