@@ -246,13 +246,16 @@ export function Editor({
       const text = editor.getText();
       const words = text.trim().split(/\s+/).filter(Boolean).length;
       setWordCount(words);
-      onWordCountUpdate(words);
     },
   });
 
   useEffect(() => {
     onEditorChange(editor);
   }, [editor]);
+
+  useEffect(() => {
+    onWordCountUpdate(wordCount);
+  }, [wordCount]);
 
   const onSaveContent = useEffectEvent(
     (debounced: string, docId: Id<"documents">, initial: string | undefined) => {
