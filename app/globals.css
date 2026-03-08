@@ -170,7 +170,7 @@
 .tiptap h1 {
   font-size: 2.25em;
   font-weight: 700;
-  margin-top: 2rem;
+  margin-top: 1.5rem;
   margin-bottom: 0.25rem;
   line-height: 1.2;
 }
@@ -178,7 +178,7 @@
 .tiptap h2 {
   font-size: 1.75em;
   font-weight: 600;
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
   margin-bottom: 0.25rem;
   line-height: 1.25;
 }
@@ -186,7 +186,7 @@
 .tiptap h3 {
   font-size: 1.375em;
   font-weight: 600;
-  margin-top: 1.25rem;
+  margin-top: 1rem;
   margin-bottom: 0.25rem;
   line-height: 1.3;
 }
@@ -489,21 +489,6 @@
 .dark .tiptap [data-bg-color="pink"] { background-color: #500724; }
 .dark .tiptap [data-bg-color="red"] { background-color: #450a0a; }
 
-/* Notion-style block hover highlight */
-.tiptap > *:not(div[data-youtube-video]):not(.columns-wrapper) {
-  border-radius: 0.25rem;
-  transition: background-color 0.1s ease;
-}
-
-.tiptap > p:not([data-bg-color]):hover,
-.tiptap > h1:not([data-bg-color]):hover,
-.tiptap > h2:not([data-bg-color]):hover,
-.tiptap > h3:not([data-bg-color]):hover,
-.tiptap > ul:hover,
-.tiptap > ol:hover,
-.tiptap > blockquote:hover {
-  background-color: var(--color-muted);
-}
 
 /* Tiptap placeholder */
 .tiptap p.is-editor-empty:first-child::before {
@@ -619,9 +604,6 @@
   transition: background-color 0.1s ease;
 }
 
-.tiptap .toggle-summary:hover {
-  background-color: var(--color-muted);
-}
 
 .tiptap .toggle-summary::marker,
 .tiptap .toggle-summary::-webkit-details-marker {
@@ -843,43 +825,20 @@
 /* Tiptap multi-column layout */
 .tiptap .columns-wrapper {
   display: grid;
-  gap: 1rem;
-  margin: 0.5rem 0;
-}
-
-.tiptap .columns-wrapper[data-columns="2"] {
-  grid-template-columns: 1fr 1fr;
-}
-
-.tiptap .columns-wrapper[data-columns="3"] {
-  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin: 0.25rem 0;
+  position: relative;
 }
 
 .tiptap .column {
   min-width: 0;
   overflow-wrap: break-word;
-  min-height: 2rem;
-  padding: 0.5rem;
-  border: 1px solid transparent;
-  border-radius: 0.375rem;
-  transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease;
-}
-
-.tiptap .column:hover {
-  border-color: var(--color-border);
-  background-color: var(--color-muted);
-}
-
-.tiptap .column:focus-within {
-  border-color: var(--color-border);
+  min-height: 1.5rem;
 }
 
 @media (max-width: 640px) {
-  .tiptap .columns-wrapper[data-columns="2"],
-  .tiptap .columns-wrapper[data-columns="3"] {
-    grid-template-columns: 1fr;
+  .tiptap .columns-wrapper {
+    grid-template-columns: 1fr !important;
   }
 }
 
@@ -906,6 +865,47 @@
   display: none !important;
 }
 
+/* Column resize handles */
+.column-resize-handle {
+  position: absolute;
+  width: 16px;
+  cursor: col-resize;
+  z-index: 10;
+  pointer-events: auto;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.column-resize-handle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: transparent;
+  border-radius: 1px;
+  transition: background-color 0.15s ease, width 0.15s ease, margin-left 0.15s ease;
+}
+
+.column-resize-handle:hover::after,
+.column-resize-handle.is-resizing::after {
+  width: 4px;
+  margin-left: -2px;
+  background-color: #2383e2;
+}
+
+.is-column-resizing {
+  cursor: col-resize !important;
+}
+
+.is-column-resizing * {
+  cursor: col-resize !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
 /* Math equation blocks (KaTeX) */
 .tiptap .math-block {
   margin: 0.5rem 0;
@@ -920,9 +920,6 @@
   cursor: pointer;
 }
 
-.tiptap .math-display:hover {
-  background-color: var(--color-muted);
-}
 
 .tiptap .math-selected {
   outline: 2px solid var(--color-primary);

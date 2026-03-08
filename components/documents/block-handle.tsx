@@ -113,6 +113,31 @@ export function BlockHandle({ editor }: BlockHandleProps) {
   return (
     <DragHandle
       editor={editor}
+      nested={{
+        edgeDetection: "none",
+        rules: [
+          {
+            id: "excludeColumnNodes",
+            evaluate: ({ node }: { node: { type: { name: string } } }) => {
+              if (node.type.name === "columns" || node.type.name === "column") {
+                return -1000;
+              }
+              return 0;
+            },
+          },
+          {
+            id: "preferWrapperBlocks",
+            evaluate: ({ node }: { node: { type: { name: string } } }) => {
+              const wrapperTypes = [
+                "blockquote", "callout", "toggleDetails",
+                "bulletList", "orderedList", "taskList", "table",
+              ];
+              if (wrapperTypes.includes(node.type.name)) return 1000;
+              return 0;
+            },
+          },
+        ],
+      }}
       className={`block-handle${menuOpen ? " menu-open" : ""}`}
       onNodeChange={({ node, pos }) => {
         setCurrentNode(node);
@@ -120,6 +145,7 @@ export function BlockHandle({ editor }: BlockHandleProps) {
       }}
       onElementDragStart={() => {
         if (currentNode && currentPos >= 0) {
+          editor.commands.setNodeSelection(currentPos);
           setColumnDropDragContext({ pos: currentPos, node: currentNode });
         }
       }}

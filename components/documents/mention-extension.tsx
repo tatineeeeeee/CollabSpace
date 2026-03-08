@@ -11,6 +11,7 @@ import {
 import Mention from "@tiptap/extension-mention";
 import type { SuggestionProps, SuggestionKeyDownProps } from "@tiptap/suggestion";
 import { ReactRenderer } from "@tiptap/react";
+import { computePosition, flip, shift, offset, autoUpdate } from "@floating-ui/dom";
 import { FileText } from "lucide-react";
 import { IconRenderer } from "@/components/shared/icon-renderer";
 
@@ -155,12 +156,41 @@ export function createMentionExtension(getDocuments: () => MentionDocument[]) {
       render: () => {
         let component: ReactRenderer<MentionListRef> | null = null;
         let popup: HTMLDivElement | null = null;
+        let cleanupAutoUpdate: (() => void) | null = null;
+        let latestClientRect: (() => DOMRect | null) | null = null;
+
+        function updatePosition() {
+          if (!popup || !latestClientRect) return;
+          const virtualEl = {
+            getBoundingClientRect: () => latestClientRect?.() ?? new DOMRect(),
+          };
+          computePosition(virtualEl, popup, {
+            strategy: "fixed",
+            placement: "bottom-start",
+            middleware: [
+              offset(4),
+              flip({ fallbackPlacements: ["top-start"] }),
+              shift({ padding: 8 }),
+            ],
+          }).then(({ x, y }) => {
+            if (!popup) return;
+            popup.style.left = `${x}px`;
+            popup.style.top = `${y}px`;
+          });
+        }
 
         return {
           onStart: (props: SuggestionProps<MentionDocument>) => {
             popup = document.createElement("div");
-            popup.style.position = "absolute";
-            popup.style.zIndex = "50";
+            popup.style.position = "fixed";
+            popup.style.zIndex = "9999";
+            popup.style.width = "max-content";
+
+            // Prevent editor blur on any pointer interaction with the popup
+            const preventFocusLoss = (e: Event) => e.preventDefault();
+            popup.addEventListener("mousedown", preventFocusLoss);
+            popup.addEventListener("pointerdown", preventFocusLoss);
+
             document.body.appendChild(popup);
 
             component = new ReactRenderer(MentionList, {
@@ -175,11 +205,14 @@ export function createMentionExtension(getDocuments: () => MentionDocument[]) {
               popup.appendChild(component.element);
             }
 
-            const rect = props.clientRect?.();
-            if (rect && popup) {
-              popup.style.left = `${rect.left + window.scrollX}px`;
-              popup.style.top = `${rect.bottom + window.scrollY + 4}px`;
-            }
+            latestClientRect = props.clientRect ?? null;
+            updatePosition();
+
+            // Auto-update position on scroll/resize
+            const virtualEl = {
+              getBoundingClientRect: () => latestClientRect?.() ?? new DOMRect(),
+            };
+            cleanupAutoUpdate = autoUpdate(virtualEl, popup, updatePosition);
           },
 
           onUpdate: (props: SuggestionProps<MentionDocument>) => {
@@ -188,15 +221,14 @@ export function createMentionExtension(getDocuments: () => MentionDocument[]) {
               command: props.command,
             });
 
-            const rect = props.clientRect?.();
-            if (rect && popup) {
-              popup.style.left = `${rect.left + window.scrollX}px`;
-              popup.style.top = `${rect.bottom + window.scrollY + 4}px`;
-            }
+            latestClientRect = props.clientRect ?? null;
+            updatePosition();
           },
 
           onKeyDown: (props: SuggestionKeyDownProps) => {
             if (props.event.key === "Escape") {
+              cleanupAutoUpdate?.();
+              cleanupAutoUpdate = null;
               popup?.remove();
               popup = null;
               component?.destroy();
@@ -208,6 +240,8 @@ export function createMentionExtension(getDocuments: () => MentionDocument[]) {
           },
 
           onExit: () => {
+            cleanupAutoUpdate?.();
+            cleanupAutoUpdate = null;
             popup?.remove();
             popup = null;
             component?.destroy();

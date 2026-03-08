@@ -14,6 +14,7 @@ import type { SuggestionOptions, SuggestionProps, SuggestionKeyDownProps } from 
 import type { Editor, Range } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
 import { ReactRenderer } from "@tiptap/react";
+import { computePosition, flip, shift, offset, autoUpdate } from "@floating-ui/dom";
 import {
   Type,
   Heading1,
@@ -37,6 +38,9 @@ import {
   Globe,
   Columns2,
   Columns3,
+  Columns4,
+  LayoutGrid,
+  Grid3x3,
   Paintbrush,
   Palette,
   Calendar,
@@ -375,6 +379,27 @@ const SLASH_COMMAND_CATEGORIES: SlashCommandCategory[] = [
         icon: Columns3,
         command: (editor, range) =>
           editor.chain().focus().deleteRange(range).setColumns({ count: 3 }).run(),
+      },
+      {
+        title: "4 Columns",
+        description: "Four-column layout",
+        icon: Columns4,
+        command: (editor, range) =>
+          editor.chain().focus().deleteRange(range).setColumns({ count: 4 }).run(),
+      },
+      {
+        title: "5 Columns",
+        description: "Five-column layout",
+        icon: LayoutGrid,
+        command: (editor, range) =>
+          editor.chain().focus().deleteRange(range).setColumns({ count: 5 }).run(),
+      },
+      {
+        title: "6 Columns",
+        description: "Six-column layout",
+        icon: Grid3x3,
+        command: (editor, range) =>
+          editor.chain().focus().deleteRange(range).setColumns({ count: 6 }).run(),
       },
       {
         title: "Sub-page",
@@ -746,7 +771,7 @@ const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandListProps>(
     return (
       <div
         ref={containerRef}
-        className="z-50 max-h-80 w-80 overflow-y-auto rounded-lg border bg-popover p-1.5 shadow-xl"
+        className="z-50 max-h-80 w-80 overflow-y-auto overscroll-y-contain rounded-lg border bg-popover p-1.5 shadow-xl"
       >
         {categorized.map((cat) => (
           <div key={cat.label}>
@@ -818,12 +843,41 @@ export const SlashCommand = Extension.create({
         render: () => {
           let component: ReactRenderer<SlashCommandListRef> | null = null;
           let popup: HTMLDivElement | null = null;
+          let cleanupAutoUpdate: (() => void) | null = null;
+          let latestClientRect: (() => DOMRect | null) | null = null;
+
+          function updatePosition() {
+            if (!popup || !latestClientRect) return;
+            const virtualEl = {
+              getBoundingClientRect: () => latestClientRect?.() ?? new DOMRect(),
+            };
+            computePosition(virtualEl, popup, {
+              strategy: "fixed",
+              placement: "bottom-start",
+              middleware: [
+                offset(4),
+                flip({ fallbackPlacements: ["top-start"] }),
+                shift({ padding: 8 }),
+              ],
+            }).then(({ x, y }) => {
+              if (!popup) return;
+              popup.style.left = `${x}px`;
+              popup.style.top = `${y}px`;
+            });
+          }
 
           return {
             onStart: (props: SuggestionProps<SlashCommandItem>) => {
               popup = document.createElement("div");
-              popup.style.position = "absolute";
-              popup.style.zIndex = "50";
+              popup.style.position = "fixed";
+              popup.style.zIndex = "9999";
+              popup.style.width = "max-content";
+
+              // Prevent editor blur on any pointer interaction with the popup
+              const preventFocusLoss = (e: Event) => e.preventDefault();
+              popup.addEventListener("mousedown", preventFocusLoss);
+              popup.addEventListener("pointerdown", preventFocusLoss);
+
               document.body.appendChild(popup);
 
               component = new ReactRenderer(SlashCommandList, {
@@ -838,11 +892,14 @@ export const SlashCommand = Extension.create({
                 popup.appendChild(component.element);
               }
 
-              const rect = props.clientRect?.();
-              if (rect && popup) {
-                popup.style.left = `${rect.left + window.scrollX}px`;
-                popup.style.top = `${rect.bottom + window.scrollY + 4}px`;
-              }
+              latestClientRect = props.clientRect ?? null;
+              updatePosition();
+
+              // Auto-update position on scroll/resize
+              const virtualEl = {
+                getBoundingClientRect: () => latestClientRect?.() ?? new DOMRect(),
+              };
+              cleanupAutoUpdate = autoUpdate(virtualEl, popup, updatePosition);
             },
 
             onUpdate: (props: SuggestionProps<SlashCommandItem>) => {
@@ -851,15 +908,14 @@ export const SlashCommand = Extension.create({
                 command: props.command,
               });
 
-              const rect = props.clientRect?.();
-              if (rect && popup) {
-                popup.style.left = `${rect.left + window.scrollX}px`;
-                popup.style.top = `${rect.bottom + window.scrollY + 4}px`;
-              }
+              latestClientRect = props.clientRect ?? null;
+              updatePosition();
             },
 
             onKeyDown: (props: SuggestionKeyDownProps) => {
               if (props.event.key === "Escape") {
+                cleanupAutoUpdate?.();
+                cleanupAutoUpdate = null;
                 popup?.remove();
                 popup = null;
                 component?.destroy();
@@ -873,6 +929,8 @@ export const SlashCommand = Extension.create({
             },
 
             onExit: () => {
+              cleanupAutoUpdate?.();
+              cleanupAutoUpdate = null;
               popup?.remove();
               popup = null;
               component?.destroy();

@@ -4,7 +4,7 @@ import { Fragment, Node as PMNode } from "@tiptap/pm/model";
 import type { EditorView } from "@tiptap/pm/view";
 import type { Slice } from "@tiptap/pm/model";
 
-const HORIZONTAL_THRESHOLD = 50; // px from edge to trigger column drop zone
+const MIN_COLUMN_WIDTH = 100; // px — refuse to create columns narrower than this
 
 // ---------------------------------------------------------------------------
 // Module-level drag context — set by BlockHandle, read by ColumnDrop plugin.
@@ -23,12 +23,83 @@ export function setColumnDropDragContext(ctx: DragContext | null) {
 
 // ---------------------------------------------------------------------------
 
+/**
+ * Resolves a nested block position to its top-level (or column-child) ancestor.
+ * Ensures the ColumnDrop plugin always works with positions that
+ * wrapInColumns/addToExistingColumns can safely manipulate.
+ */
+function resolveToTopLevel(
+  doc: PMNode,
+  pos: number,
+  node: PMNode
+): { pos: number; node: PMNode } {
+  const $pos = doc.resolve(pos);
+
+  // Already at top-level (direct child of doc)
+  if ($pos.depth <= 1) return { pos, node };
+
+  // If nested inside a column, resolve to the direct child of the column
+  for (let d = $pos.depth; d > 0; d--) {
+    if ($pos.node(d).type.name === "column") {
+      for (let cd = $pos.depth; cd > d; cd--) {
+        if ($pos.node(cd - 1).type.name === "column") {
+          const resolvedPos = $pos.before(cd);
+          const resolvedNode = doc.nodeAt(resolvedPos);
+          if (resolvedNode) return { pos: resolvedPos, node: resolvedNode };
+        }
+      }
+      return { pos, node };
+    }
+  }
+
+  // Not inside a column — resolve to top-level ancestor (depth 1)
+  const topPos = $pos.before(1);
+  const topNode = doc.nodeAt(topPos);
+  if (topNode) return { pos: topPos, node: topNode };
+
+  return { pos, node };
+}
+
 interface DropZone {
   side: "left" | "right";
   targetPos: number;
   targetNode: PMNode;
   isExistingColumns: boolean;
   insertAtColumnIndex?: number;
+}
+
+/**
+ * Checks if `pos` is nested inside a columns wrapper.
+ */
+function getAncestorColumnsPos(doc: PMNode, pos: number): number | null {
+  const $pos = doc.resolve(pos);
+  for (let d = $pos.depth; d > 0; d--) {
+    if ($pos.node(d).type.name === "columns") {
+      return $pos.before(d);
+    }
+  }
+  return null;
+}
+
+/**
+ * Computes the horizontal threshold for triggering column drop zones.
+ * Uses 15% of block width, clamped between 40px and 100px.
+ */
+function getThreshold(rect: DOMRect): number {
+  const proportional = rect.width * 0.15;
+  return Math.max(40, Math.min(proportional, 100));
+}
+
+/**
+ * Computes equal-width values for `count` columns, summing to 100.
+ * Returns a comma-separated string like "50,50" or "33.33,33.33,33.34".
+ */
+function equalWidths(count: number): string {
+  const base = Math.round((10000 / count)) / 100;
+  const parts = Array.from({ length: count }, () => base);
+  const sum = parts.reduce((a, b) => a + b, 0);
+  parts[parts.length - 1] = Math.round((parts[parts.length - 1] + (100 - sum)) * 100) / 100;
+  return parts.join(",");
 }
 
 /**
@@ -45,7 +116,7 @@ function getDraggedBlock(view: EditorView): { pos: number; node: PMNode } | null
     const { pos, node } = currentDragContext;
     // Validate position is still valid in the current document
     const docNode = view.state.doc.nodeAt(pos);
-    if (docNode && docNode.type === node.type && docNode.nodeSize === node.nodeSize) {
+    if (docNode && docNode.type.name === node.type.name) {
       return { pos, node: docNode };
     }
     // Position may have shifted — scan nearby offsets
@@ -53,7 +124,7 @@ function getDraggedBlock(view: EditorView): { pos: number; node: PMNode } | null
       const tryPos = pos + offset;
       if (tryPos >= 0 && tryPos < view.state.doc.content.size) {
         const tryNode = view.state.doc.nodeAt(tryPos);
-        if (tryNode && tryNode.type === node.type && tryNode.nodeSize === node.nodeSize) {
+        if (tryNode && tryNode.type.name === node.type.name) {
           return { pos: tryPos, node: tryNode };
         }
       }
@@ -148,15 +219,24 @@ function detectHorizontalZone(
   // Don't drop on yourself
   if (topLevelPos === draggedPos) return null;
 
-  // Handle existing columns wrapper — allow adding if < 3 columns
-  if (topLevelNode.type.name === "columns") {
-    if (topLevelNode.childCount >= 3) return null;
+  // Don't drop on an ancestor of the dragged block (nested blocks inside columns)
+  const $dragPos = view.state.doc.resolve(draggedPos);
+  for (let d = $dragPos.depth; d > 0; d--) {
+    if ($dragPos.before(d) === topLevelPos) return null;
+  }
 
+  // Handle existing columns wrapper — dynamic width-based limit
+  if (topLevelNode.type.name === "columns") {
     const domNode = view.nodeDOM(topLevelPos);
     if (!domNode || !(domNode instanceof HTMLElement)) return null;
     const rect = domNode.getBoundingClientRect();
 
-    if (event.clientX - rect.left < HORIZONTAL_THRESHOLD) {
+    // Check if adding another column would make columns too narrow
+    if (rect.width / (topLevelNode.childCount + 1) < MIN_COLUMN_WIDTH) return null;
+
+    const threshold = getThreshold(rect);
+
+    if (event.clientX - rect.left < threshold) {
       return {
         side: "left",
         targetPos: topLevelPos,
@@ -165,7 +245,7 @@ function detectHorizontalZone(
         insertAtColumnIndex: 0,
       };
     }
-    if (rect.right - event.clientX < HORIZONTAL_THRESHOLD) {
+    if (rect.right - event.clientX < threshold) {
       return {
         side: "right",
         targetPos: topLevelPos,
@@ -181,8 +261,9 @@ function detectHorizontalZone(
   const domNode = view.nodeDOM(topLevelPos);
   if (!domNode || !(domNode instanceof HTMLElement)) return null;
   const rect = domNode.getBoundingClientRect();
+  const threshold = getThreshold(rect);
 
-  if (event.clientX - rect.left < HORIZONTAL_THRESHOLD) {
+  if (event.clientX - rect.left < threshold) {
     return {
       side: "left",
       targetPos: topLevelPos,
@@ -190,7 +271,7 @@ function detectHorizontalZone(
       isExistingColumns: false,
     };
   }
-  if (rect.right - event.clientX < HORIZONTAL_THRESHOLD) {
+  if (rect.right - event.clientX < threshold) {
     return {
       side: "right",
       targetPos: topLevelPos,
@@ -233,23 +314,36 @@ function wrapInColumns(
 
   const col1 = columnType.create(null, Fragment.from(leftNode.copy(leftNode.content)));
   const col2 = columnType.create(null, Fragment.from(rightNode.copy(rightNode.content)));
-  const columnsNode = columnsType.create({ count: 2 }, Fragment.from([col1, col2]));
+  const columnsNode = columnsType.create(
+    { count: 2, widths: equalWidths(2) },
+    Fragment.from([col1, col2])
+  );
 
-  // Operate end-to-start: replace the later block first, then delete the earlier
-  const laterPos = Math.max(draggedPos, targetPos);
-  const laterNode = laterPos === draggedPos ? draggedNode : targetNode;
-  const earlierPos = Math.min(draggedPos, targetPos);
-  const earlierNode = earlierPos === draggedPos ? draggedNode : targetNode;
+  // Check if dragged block is nested inside a column
+  const isNested = getAncestorColumnsPos(state.doc, draggedPos) !== null;
 
-  // Check if the two blocks are adjacent
-  const earlierEnd = earlierPos + earlierNode.nodeSize;
-  if (earlierEnd === laterPos) {
-    // Adjacent — single replaceWith covers both
-    tr.replaceWith(earlierPos, laterPos + laterNode.nodeSize, columnsNode);
+  if (isNested) {
+    // Nested source: delete from column first, then replace the target
+    tr.delete(draggedPos, draggedPos + draggedNode.nodeSize);
+    const mappedTargetPos = tr.mapping.map(targetPos);
+    const mappedTargetNode = tr.doc.nodeAt(mappedTargetPos);
+    if (mappedTargetNode) {
+      tr.replaceWith(mappedTargetPos, mappedTargetPos + mappedTargetNode.nodeSize, columnsNode);
+    }
   } else {
-    // Non-adjacent — replace later block, then delete earlier block
-    tr.replaceWith(laterPos, laterPos + laterNode.nodeSize, columnsNode);
-    tr.delete(earlierPos, earlierPos + earlierNode.nodeSize);
+    // Both are top-level — operate end-to-start
+    const laterPos = Math.max(draggedPos, targetPos);
+    const laterNode = laterPos === draggedPos ? draggedNode : targetNode;
+    const earlierPos = Math.min(draggedPos, targetPos);
+    const earlierNode = earlierPos === draggedPos ? draggedNode : targetNode;
+
+    const earlierEnd = earlierPos + earlierNode.nodeSize;
+    if (earlierEnd === laterPos) {
+      tr.replaceWith(earlierPos, laterPos + laterNode.nodeSize, columnsNode);
+    } else {
+      tr.replaceWith(laterPos, laterPos + laterNode.nodeSize, columnsNode);
+      tr.delete(earlierPos, earlierPos + earlierNode.nodeSize);
+    }
   }
 
   view.dispatch(tr);
@@ -257,7 +351,6 @@ function wrapInColumns(
 
 /**
  * Adds a block as a new column to an existing columns wrapper.
- * Operates to avoid position mapping issues.
  */
 function addToExistingColumns(
   view: EditorView,
@@ -287,22 +380,32 @@ function addToExistingColumns(
     insertPos += columnsNode.child(i).nodeSize;
   }
 
-  if (draggedPos > columnsPos) {
-    // Dragged block is AFTER columns: delete it first (doesn't affect insertPos)
+  // Check if dragged block is nested inside a column
+  const isNested = getAncestorColumnsPos(state.doc, draggedPos) !== null;
+
+  if (isNested) {
+    // Nested source: delete from column first, then insert new column
+    tr.delete(draggedPos, draggedPos + draggedNode.nodeSize);
+    const mappedInsertPos = tr.mapping.map(insertPos);
+    tr.insert(mappedInsertPos, newCol);
+  } else if (draggedPos > columnsPos) {
+    // Top-level AFTER columns: delete first (doesn't affect insertPos)
     tr.delete(draggedPos, draggedPos + draggedNode.nodeSize);
     tr.insert(insertPos, newCol);
   } else {
-    // Dragged block is BEFORE columns: insert first, then delete
+    // Top-level BEFORE columns: insert first, then delete
     tr.insert(insertPos, newCol);
     tr.delete(draggedPos, draggedPos + draggedNode.nodeSize);
   }
 
-  // Update the count attribute
+  // Update the count and widths attributes
   const mappedColumnsPos = tr.mapping.map(columnsPos);
   const newColumnsNode = tr.doc.nodeAt(mappedColumnsPos);
   if (newColumnsNode) {
+    const newCount = newColumnsNode.childCount;
     tr.setNodeMarkup(mappedColumnsPos, undefined, {
-      count: newColumnsNode.childCount,
+      count: newCount,
+      widths: equalWidths(newCount),
     });
   }
 
@@ -417,7 +520,8 @@ function createColumnDropPlugin(): Plugin {
             return false;
           }
 
-          const zone = detectHorizontalZone(view, event, dragged.pos);
+          const resolved = resolveToTopLevel(view.state.doc, dragged.pos, dragged.node);
+          const zone = detectHorizontalZone(view, event, resolved.pos);
 
           if (zone) {
             activeZone = zone;
@@ -462,15 +566,17 @@ function createColumnDropPlugin(): Plugin {
           return false;
         }
 
+        const resolved = resolveToTopLevel(view.state.doc, dragged.pos, dragged.node);
+
         // Don't nest columns
-        if (dragged.node.type.name === "columns") {
+        if (resolved.node.type.name === "columns") {
           activeZone = null;
           hideIndicator(view);
           return false;
         }
 
         // Don't drop on self
-        if (dragged.pos === activeZone.targetPos) {
+        if (resolved.pos === activeZone.targetPos) {
           activeZone = null;
           hideIndicator(view);
           return false;
@@ -478,7 +584,7 @@ function createColumnDropPlugin(): Plugin {
 
         event.preventDefault();
 
-        const { pos, node } = dragged;
+        const { pos, node } = resolved;
         const zone = activeZone;
         activeZone = null;
         hideIndicator(view);
@@ -501,7 +607,9 @@ function createColumnDropPlugin(): Plugin {
 }
 
 /**
- * Cleanup plugin — unwraps columns that end up with < 2 children.
+ * Cleanup plugin — removes empty columns and unwraps columns wrappers
+ * that end up with fewer than 2 non-empty children.
+ * Runs as appendTransaction so it fires synchronously before view update.
  */
 function createColumnsCleanupPlugin(): Plugin {
   return new Plugin({
@@ -521,17 +629,54 @@ function createColumnsCleanupPlugin(): Plugin {
         }
       });
 
+      // Process end-to-start to keep position mapping correct
       for (let i = columnsPositions.length - 1; i >= 0; i--) {
         const { pos, node } = columnsPositions[i];
 
-        if (node.childCount < 2) {
-          const mappedPos = tr.mapping.map(pos);
-          if (node.childCount === 1) {
-            tr.replaceWith(mappedPos, mappedPos + node.nodeSize, node.firstChild!.content);
+        // Collect non-empty column children
+        const nonEmptyColumns: PMNode[] = [];
+        node.forEach((child) => {
+          if (child.type.name === "column" && child.childCount > 0) {
+            nonEmptyColumns.push(child);
+          }
+        });
+
+        // All columns have content — check if count attribute is stale
+        if (nonEmptyColumns.length === node.childCount) {
+          if (node.childCount < 2) {
+            // Shouldn't happen normally but handle edge case
+            const mappedPos = tr.mapping.map(pos);
+            if (node.childCount === 1) {
+              tr.replaceWith(mappedPos, mappedPos + node.nodeSize, node.firstChild!.content);
+            } else {
+              const para = newState.schema.nodes.paragraph.create();
+              tr.replaceWith(mappedPos, mappedPos + node.nodeSize, para);
+            }
+            changed = true;
+          }
+          continue;
+        }
+
+        const mappedPos = tr.mapping.map(pos);
+
+        if (nonEmptyColumns.length < 2) {
+          // 0 or 1 non-empty columns — unwrap entirely
+          if (nonEmptyColumns.length === 1) {
+            tr.replaceWith(mappedPos, mappedPos + node.nodeSize, nonEmptyColumns[0].content);
           } else {
             const para = newState.schema.nodes.paragraph.create();
             tr.replaceWith(mappedPos, mappedPos + node.nodeSize, para);
           }
+          changed = true;
+        } else {
+          // Some columns are empty — rebuild with only non-empty columns
+          const columnsType = newState.schema.nodes.columns;
+          const newCount = nonEmptyColumns.length;
+          const newColumnsNode = columnsType.create(
+            { count: newCount, widths: equalWidths(newCount) },
+            Fragment.from(nonEmptyColumns)
+          );
+          tr.replaceWith(mappedPos, mappedPos + node.nodeSize, newColumnsNode);
           changed = true;
         }
       }

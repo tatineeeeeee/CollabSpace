@@ -54,6 +54,7 @@ import { LinkToPage, setLinkToPageDocsFn } from "./link-to-page-extension";
 import { SubPage, setSubPageContext } from "./sub-page-extension";
 import { BlockBackground } from "./block-background-extension";
 import { ColumnDrop } from "./column-drop-extension";
+import { ColumnResize } from "./column-resize-extension";
 import { createMentionExtension } from "./mention-extension";
 import type { MentionDocument } from "./mention-extension";
 import { createUserMentionExtension } from "./user-mention-extension";
@@ -197,6 +198,7 @@ export function Editor({
       Columns,
       Column,
       ColumnDrop,
+      ColumnResize,
       MathBlock,
       MathInline,
       DateMention,
