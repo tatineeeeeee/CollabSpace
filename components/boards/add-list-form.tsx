@@ -88,6 +88,7 @@ export function AddListForm({ boardId, hasBackground }: AddListFormProps) {
           variant="ghost"
           size="icon"
           className="h-7 w-7"
+          aria-label="Cancel adding list"
           onClick={() => {
             setIsEditing(false);
             setTitle("");

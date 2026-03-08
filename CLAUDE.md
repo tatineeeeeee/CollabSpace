@@ -41,6 +41,8 @@ A real-time team collaboration workspace (mini Notion + Trello) built as a portf
 - `npx convex dev` — Start Convex dev server (run alongside Next.js)
 - `bun run build` — Production build
 - `bun run lint` — Run ESLint
+- `bun run test` — Run unit tests (Vitest)
+- `bun run test:e2e` — Run E2E tests (Playwright, requires dev server)
 - `npx convex deploy` — Deploy Convex to production
 - `npm audit` — Security vulnerability scan (bun lacks built-in audit)
 
@@ -348,6 +350,37 @@ Required in `.env.local`:
 - Write clear commit messages: `feat:`, `fix:`, `refactor:`, `style:`, `docs:`, `chore:`
 - Commit frequently — one logical change per commit
 - Never commit `node_modules/`, `.env.local`, or `convex/_generated/`
+
+## Testing
+
+### Unit Tests (Vitest)
+- Config: `vitest.config.ts` — globals, node environment, `@/` path alias, excludes `e2e/`
+- Test files: `lib/__tests__/utils.test.ts`, `lib/__tests__/icon-utils.test.ts`, `lib/__tests__/export-utils.test.ts`
+- Tests cover: `isSafeCoverValue` (security edge cases), `formatFileSize`, `formatRelativeTime` (fake timers), icon type detection, filename sanitization
+- Run: `bun run test`
+
+### E2E Tests (Playwright)
+- Config: `playwright.config.ts` — Chromium only, auto-starts dev server, HTML reporter
+- Test directory: `e2e/` with 4 suites:
+  - `landing-page.spec.ts` — hero, nav, features, footer, CTA navigation
+  - `auth.spec.ts` — sign-in/sign-up rendering, protected route redirects
+  - `public-preview.spec.ts` — error states, public route access
+  - `accessibility.spec.ts` — landmarks, alt attrs, keyboard nav, brand links
+- Run: `bun run test:e2e`
+- Playwright artifacts (test-results/, playwright-report/, blob-report/) are gitignored
+
+### CI Pipeline
+- `.github/workflows/ci.yml` — runs on push to master + PRs
+- Steps: checkout → setup Bun → install (frozen lockfile) → lint → unit test → build
+- Build uses empty env vars (`NEXT_PUBLIC_CONVEX_URL=""`) for prerender safety
+
+### Accessibility
+- All icon-only `<Button size="icon">` must have `aria-label`
+- Clickable `<div>` elements need `role="button"`, `tabIndex={0}`, and `onKeyDown` (Enter/Space)
+- Hover-revealed elements need `focus:opacity-100` for keyboard access
+- Save status / live-updating text uses `aria-live="polite"`
+- Prefer `aria-label` over `title` for screen reader support on icon buttons
+- shadcn/ui components (Dialog, DropdownMenu, etc.) handle focus trapping automatically via Radix
 
 ## Security & Input Validation
 

@@ -70,6 +70,7 @@ function SidebarHeader({ onCollapse }: { onCollapse?: () => void }) {
           variant="ghost"
           size="icon"
           className="h-7 w-7 shrink-0 text-muted-foreground"
+          aria-label="Collapse sidebar"
           onClick={onCollapse}
         >
           <ChevronsLeft className="h-4 w-4" />

@@ -144,7 +144,8 @@ export function BoardList({
         <button
           {...attributes}
           {...listeners}
-          className="shrink-0 cursor-grab text-muted-foreground/40 opacity-0 transition-opacity group-hover/list:opacity-100 active:cursor-grabbing"
+          aria-label="Drag to reorder list"
+          className="shrink-0 cursor-grab text-muted-foreground/40 opacity-0 transition-opacity focus:opacity-100 group-hover/list:opacity-100 active:cursor-grabbing"
         >
           <GripVertical className="h-4 w-4" />
         </button>
@@ -166,7 +167,7 @@ export function BoardList({
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0">
+            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" aria-label="List options">
               <MoreHorizontal className="h-3.5 w-3.5" />
             </Button>
           </DropdownMenuTrigger>
@@ -273,6 +274,7 @@ export function BoardList({
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7"
+                aria-label="Cancel adding card"
                 onClick={() => {
                   setAddingCard(false);
                   setCardTitle("");

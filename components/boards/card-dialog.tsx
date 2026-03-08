@@ -314,6 +314,7 @@ function CardDialogContent({
               variant="ghost"
               size="icon"
               className="absolute right-1 top-1 h-6 w-6 bg-background/80 hover:bg-background"
+              aria-label="Remove cover image"
               onClick={handleRemoveCoverImage}
             >
               <X className="h-3.5 w-3.5" />
@@ -420,6 +421,7 @@ function CardDialogContent({
               variant="ghost"
               size="icon"
               className="h-7 w-7"
+              aria-label="Clear due date"
               onClick={() => handleDueDateSelect(undefined)}
             >
               <X className="h-3.5 w-3.5" />

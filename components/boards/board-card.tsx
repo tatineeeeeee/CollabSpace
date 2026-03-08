@@ -114,7 +114,18 @@ export function BoardCard({ card, onClick, isDragOverlay, membersMap }: BoardCar
           onError={() => setImageError(true)}
         />
       ) : null}
-      <div className="p-2.5" onClick={onClick}>
+      <div
+        className="p-2.5"
+        role="button"
+        tabIndex={0}
+        onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onClick();
+          }
+        }}
+      >
         <p className={cn(
           "text-sm font-medium leading-snug",
           darkCover && "text-white"

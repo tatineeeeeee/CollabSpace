@@ -113,6 +113,7 @@ export function BoardHeader({ board }: BoardHeaderProps) {
           variant="ghost"
           size="icon"
           className="h-8 w-8 shrink-0 md:hidden"
+          aria-label="Open sidebar"
           onClick={() => setMobileOpen(true)}
         >
           <Menu className="h-4 w-4" />
@@ -121,6 +122,7 @@ export function BoardHeader({ board }: BoardHeaderProps) {
           variant="ghost"
           size="icon"
           className="h-8 w-8 shrink-0"
+          aria-label="Back to boards"
           onClick={() => router.push("/boards")}
         >
           <ArrowLeft className="h-4 w-4" />
@@ -130,14 +132,14 @@ export function BoardHeader({ board }: BoardHeaderProps) {
       {board.icon ? (
         <div className="group/icon relative">
           <IconPicker onChange={handleIconChange} onRemove={() => update({ id: board._id, icon: "" })} asChild>
-            <button className="text-xl transition-opacity hover:opacity-80">
+            <button className="text-xl transition-opacity hover:opacity-80" aria-label="Change board icon">
               <IconRenderer icon={board.icon} className="h-5 w-5 text-xl" />
             </button>
           </IconPicker>
           <button
             onClick={handleRemoveIcon}
-            title="Remove icon"
-            className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-muted opacity-0 shadow-sm transition-opacity group-hover/icon:opacity-100"
+            aria-label="Remove icon"
+            className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-muted opacity-0 shadow-sm transition-opacity focus:opacity-100 group-hover/icon:opacity-100"
           >
             <X className="h-2.5 w-2.5 text-muted-foreground" />
           </button>
@@ -148,6 +150,7 @@ export function BoardHeader({ board }: BoardHeaderProps) {
             variant="ghost"
             size="icon"
             className="h-8 w-8 shrink-0 text-muted-foreground"
+            aria-label="Add board icon"
           >
             <Smile className="h-4 w-4" />
           </Button>
@@ -172,7 +175,7 @@ export function BoardHeader({ board }: BoardHeaderProps) {
       {/* Menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="Board options">
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>

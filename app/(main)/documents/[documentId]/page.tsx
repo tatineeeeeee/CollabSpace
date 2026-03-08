@@ -235,7 +235,7 @@ ${body}
 
         {/* Right: edited time + share + star + more menu */}
         <div className="flex shrink-0 items-center gap-1">
-          <span className="hidden text-xs text-muted-foreground sm:inline">
+          <span className="hidden text-xs text-muted-foreground sm:inline" aria-live="polite">
             Edited {formatRelativeTime(document.updatedAt ?? document._creationTime)}
           </span>
           <Popover>
@@ -285,7 +285,7 @@ ${body}
             size="icon"
             className="h-7 w-7 shrink-0"
             onClick={() => toggleFavorite({ documentId })}
-            title={isFavorited ? "Remove from favorites" : "Add to favorites"}
+            aria-label={isFavorited ? "Remove from favorites" : "Add to favorites"}
           >
             <Star
               className={cn(
@@ -302,7 +302,7 @@ ${body}
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7 shrink-0"
-                title="Page settings"
+                aria-label="Page settings"
               >
                 <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
               </Button>
