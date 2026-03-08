@@ -11,7 +11,8 @@ import Link from "@tiptap/extension-link";
 import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
-import Image from "@tiptap/extension-image";
+import { CodeBlock } from "./code-block-extension";
+import { ImageBlock } from "./image-block-extension";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
 import { Table } from "@tiptap/extension-table";
@@ -46,8 +47,13 @@ import { DateMention } from "./date-mention-extension";
 import { AudioBlock } from "./audio-extension";
 import { VideoBlock } from "./video-extension";
 import { BookmarkBlock } from "./bookmark-extension";
+import { FileAttachment } from "./file-attachment-extension";
+import { PdfBlock } from "./pdf-extension";
 import { ToggleableHeading } from "./toggleable-heading-extension";
 import { LinkToPage, setLinkToPageDocsFn } from "./link-to-page-extension";
+import { SubPage, setSubPageContext } from "./sub-page-extension";
+import { BlockBackground } from "./block-background-extension";
+import { ColumnDrop } from "./column-drop-extension";
 import { createMentionExtension } from "./mention-extension";
 import type { MentionDocument } from "./mention-extension";
 import { createUserMentionExtension } from "./user-mention-extension";
@@ -86,6 +92,20 @@ export function Editor({
     api.workspaces.getMembers,
     workspaceId ? { workspaceId } : "skip"
   );
+
+  const onSubPageContextChange = useEffectEvent(
+    (wsId: typeof workspaceId, docId: typeof documentId) => {
+      if (wsId) {
+        setSubPageContext({ workspaceId: wsId, documentId: docId });
+      } else {
+        setSubPageContext(null);
+      }
+    }
+  );
+  useEffect(() => {
+    onSubPageContextChange(workspaceId, documentId);
+    return () => setSubPageContext(null);
+  }, [workspaceId, documentId]);
 
   const onMentionDocsChange = useEffectEvent((docs: typeof mentionDocs) => {
     latestMentionDocs = docs ?? [];
@@ -146,7 +166,9 @@ export function Editor({
     extensions: [
       StarterKit.configure({
         heading: false,
+        codeBlock: false,
       }),
+      CodeBlock,
       ToggleableHeading.configure({ levels: [1, 2, 3] }),
       Placeholder.configure({
         placeholder: "Type '/' for commands...",
@@ -158,12 +180,10 @@ export function Editor({
         HTMLAttributes: { class: "text-primary underline cursor-pointer" },
       }),
       Highlight.configure({ multicolor: true }),
+      BlockBackground,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Underline,
-      Image.configure({
-        allowBase64: true,
-        HTMLAttributes: { class: "rounded-lg max-w-full" },
-      }),
+      ImageBlock,
       TextStyle,
       Color,
       Table.configure({ resizable: true }),
@@ -176,13 +196,17 @@ export function Editor({
       TableOfContents,
       Columns,
       Column,
+      ColumnDrop,
       MathBlock,
       MathInline,
       DateMention,
       AudioBlock,
       VideoBlock,
       BookmarkBlock,
+      FileAttachment,
+      PdfBlock,
       LinkToPage,
+      SubPage,
       SlashCommand,
       createMentionExtension(() => latestMentionDocs),
       createUserMentionExtension(() => latestMentionUsers),

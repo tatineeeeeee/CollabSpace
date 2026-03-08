@@ -6,7 +6,7 @@ import type { NodeViewProps } from "@tiptap/react";
 import { useState } from "react";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Bookmark as BookmarkIcon, ExternalLink, Loader2 } from "lucide-react";
+import { Bookmark as BookmarkIcon, ExternalLink, Loader2, AlertCircle } from "lucide-react";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -45,6 +45,7 @@ function BookmarkView({ node, updateAttributes, editor }: NodeViewProps) {
   const [loading, setLoading] = useState(false);
   const [faviconError, setFaviconError] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [fetchFailed, setFetchFailed] = useState(false);
   const fetchMetadata = useAction(api.bookmarks.fetchMetadata);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,6 +54,7 @@ function BookmarkView({ node, updateAttributes, editor }: NodeViewProps) {
     if (!isSafeUrl(trimmed)) return;
 
     setLoading(true);
+    setFetchFailed(false);
     try {
       const meta = await fetchMetadata({ url: trimmed });
       updateAttributes({
@@ -63,6 +65,7 @@ function BookmarkView({ node, updateAttributes, editor }: NodeViewProps) {
         image: meta.image,
       });
     } catch {
+      setFetchFailed(true);
       updateAttributes({ url: trimmed });
     } finally {
       setLoading(false);
@@ -102,6 +105,41 @@ function BookmarkView({ node, updateAttributes, editor }: NodeViewProps) {
     );
   }
 
+  // Fallback card when metadata fetch failed (no title or description)
+  if (!attrs.title && !attrs.description) {
+    return (
+      <NodeViewWrapper>
+        <a
+          href={attrs.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bookmark-card bookmark-loaded"
+        >
+          <div className="bookmark-meta">
+            <div className="bookmark-title-row">
+              {attrs.favicon && !faviconError ? (
+                <img
+                  src={attrs.favicon}
+                  alt=""
+                  className="bookmark-favicon"
+                  onError={() => setFaviconError(true)}
+                />
+              ) : (
+                <AlertCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
+              )}
+              <span className="bookmark-title">{getDomain(attrs.url)}</span>
+            </div>
+            <p className="bookmark-description">Could not load preview for this link</p>
+            <span className="bookmark-domain">
+              <ExternalLink className="inline-block h-3 w-3 mr-1" />
+              {attrs.url}
+            </span>
+          </div>
+        </a>
+      </NodeViewWrapper>
+    );
+  }
+
   return (
     <NodeViewWrapper>
       <a
@@ -112,13 +150,17 @@ function BookmarkView({ node, updateAttributes, editor }: NodeViewProps) {
       >
         <div className="bookmark-meta">
           <div className="bookmark-title-row">
-            {attrs.favicon && !faviconError && (
+            {attrs.favicon && !faviconError ? (
               <img
                 src={attrs.favicon}
                 alt=""
                 className="bookmark-favicon"
                 onError={() => setFaviconError(true)}
               />
+            ) : (
+              faviconError && attrs.image && !imageError && (
+                <BookmarkIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+              )
             )}
             <span className="bookmark-title">
               {attrs.title || getDomain(attrs.url)}

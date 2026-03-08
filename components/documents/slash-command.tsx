@@ -50,6 +50,8 @@ import {
   Music,
   FileText,
   UserRound,
+  Paperclip,
+  FilePlus,
   type LucideIcon,
 } from "lucide-react";
 
@@ -167,14 +169,15 @@ const SLASH_COMMAND_CATEGORIES: SlashCommandCategory[] = [
     items: [
       {
         title: "Image",
-        description: "Embed an image from URL",
+        description: "Upload or embed an image",
         icon: ImageIcon,
-        command: (editor, range) => {
-          const url = window.prompt("Image URL");
-          if (url) {
-            editor.chain().focus().deleteRange(range).setImage({ src: url }).run();
-          }
-        },
+        command: (editor, range) =>
+          editor
+            .chain()
+            .focus()
+            .deleteRange(range)
+            .insertContent({ type: "imageBlock" })
+            .run(),
       },
       {
         title: "YouTube",
@@ -235,6 +238,30 @@ const SLASH_COMMAND_CATEGORIES: SlashCommandCategory[] = [
             .insertContent({ type: "bookmark" })
             .run(),
       },
+      {
+        title: "File",
+        description: "Upload a file attachment",
+        icon: Paperclip,
+        command: (editor, range) =>
+          editor
+            .chain()
+            .focus()
+            .deleteRange(range)
+            .insertContent({ type: "fileAttachment" })
+            .run(),
+      },
+      {
+        title: "PDF",
+        description: "Embed a PDF document",
+        icon: FileText,
+        command: (editor, range) =>
+          editor
+            .chain()
+            .focus()
+            .deleteRange(range)
+            .insertContent({ type: "pdfBlock" })
+            .run(),
+      },
     ],
   },
   {
@@ -270,7 +297,7 @@ const SLASH_COMMAND_CATEGORIES: SlashCommandCategory[] = [
       },
       {
         title: "Code Block",
-        description: "Code snippet block",
+        description: "Code snippet with syntax highlighting",
         icon: Code,
         command: (editor, range) =>
           editor.chain().focus().deleteRange(range).setCodeBlock().run(),
@@ -348,6 +375,18 @@ const SLASH_COMMAND_CATEGORIES: SlashCommandCategory[] = [
         icon: Columns3,
         command: (editor, range) =>
           editor.chain().focus().deleteRange(range).setColumns({ count: 3 }).run(),
+      },
+      {
+        title: "Sub-page",
+        description: "Create a new child page",
+        icon: FilePlus,
+        command: (editor, range) =>
+          editor
+            .chain()
+            .focus()
+            .deleteRange(range)
+            .insertContent({ type: "subPage" })
+            .run(),
       },
     ],
   },
@@ -485,66 +524,66 @@ const SLASH_COMMAND_CATEGORIES: SlashCommandCategory[] = [
     items: [
       {
         title: "Red Background",
-        description: "Red text background",
+        description: "Red block background",
         icon: Highlighter,
         command: (editor, range) =>
-          editor.chain().focus().deleteRange(range).toggleHighlight({ color: "#fef2f2" }).run(),
+          editor.chain().focus().deleteRange(range).setBlockBackground("red").run(),
       },
       {
         title: "Blue Background",
-        description: "Blue text background",
+        description: "Blue block background",
         icon: Highlighter,
         command: (editor, range) =>
-          editor.chain().focus().deleteRange(range).toggleHighlight({ color: "#dbeafe" }).run(),
+          editor.chain().focus().deleteRange(range).setBlockBackground("blue").run(),
       },
       {
         title: "Green Background",
-        description: "Green text background",
+        description: "Green block background",
         icon: Highlighter,
         command: (editor, range) =>
-          editor.chain().focus().deleteRange(range).toggleHighlight({ color: "#dcfce7" }).run(),
+          editor.chain().focus().deleteRange(range).setBlockBackground("green").run(),
       },
       {
         title: "Yellow Background",
-        description: "Yellow text background",
+        description: "Yellow block background",
         icon: Highlighter,
         command: (editor, range) =>
-          editor.chain().focus().deleteRange(range).toggleHighlight({ color: "#fef9c3" }).run(),
+          editor.chain().focus().deleteRange(range).setBlockBackground("yellow").run(),
       },
       {
         title: "Orange Background",
-        description: "Orange text background",
+        description: "Orange block background",
         icon: Highlighter,
         command: (editor, range) =>
-          editor.chain().focus().deleteRange(range).toggleHighlight({ color: "#fef3c7" }).run(),
+          editor.chain().focus().deleteRange(range).setBlockBackground("orange").run(),
       },
       {
         title: "Purple Background",
-        description: "Purple text background",
+        description: "Purple block background",
         icon: Highlighter,
         command: (editor, range) =>
-          editor.chain().focus().deleteRange(range).toggleHighlight({ color: "#f3e8ff" }).run(),
+          editor.chain().focus().deleteRange(range).setBlockBackground("purple").run(),
       },
       {
         title: "Pink Background",
-        description: "Pink text background",
+        description: "Pink block background",
         icon: Highlighter,
         command: (editor, range) =>
-          editor.chain().focus().deleteRange(range).toggleHighlight({ color: "#fce7f3" }).run(),
+          editor.chain().focus().deleteRange(range).setBlockBackground("pink").run(),
       },
       {
         title: "Gray Background",
-        description: "Gray text background",
+        description: "Gray block background",
         icon: Highlighter,
         command: (editor, range) =>
-          editor.chain().focus().deleteRange(range).toggleHighlight({ color: "#f1f1ef" }).run(),
+          editor.chain().focus().deleteRange(range).setBlockBackground("gray").run(),
       },
       {
         title: "Default Background",
         description: "Remove background color",
         icon: Palette,
         command: (editor, range) =>
-          editor.chain().focus().deleteRange(range).unsetHighlight().run(),
+          editor.chain().focus().deleteRange(range).setBlockBackground(null).run(),
       },
     ],
   },

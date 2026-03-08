@@ -49,6 +49,28 @@ function MathBlockView({ node, updateAttributes, editor, selected }: NodeViewPro
     }
   };
 
+  // Validate LaTeX and get error message
+  const getLatexError = (tex: string): string | null => {
+    if (!tex.trim()) return null;
+    try {
+      katex.renderToString(tex, { throwOnError: true, displayMode: true });
+      return null;
+    } catch (err) {
+      return err instanceof Error ? err.message.replace(/^KaTeX parse error:\s*/, "") : "Invalid LaTeX";
+    }
+  };
+
+  const previewHtml = (() => {
+    if (!input.trim()) return "";
+    try {
+      return katex.renderToString(input, { throwOnError: false, displayMode: true });
+    } catch {
+      return "";
+    }
+  })();
+
+  const latexError = getLatexError(input);
+
   if (editing && editor.isEditable) {
     return (
       <NodeViewWrapper>
@@ -71,6 +93,15 @@ function MathBlockView({ node, updateAttributes, editor, selected }: NodeViewPro
             className="math-editor-input"
             rows={2}
           />
+          {previewHtml && (
+            <div
+              className="math-live-preview"
+              dangerouslySetInnerHTML={{ __html: previewHtml }}
+            />
+          )}
+          {latexError && (
+            <div className="math-error">{latexError}</div>
+          )}
           <div className="flex items-center justify-between px-1 pb-1">
             <span className="text-[11px] text-muted-foreground">
               Ctrl+Enter to save

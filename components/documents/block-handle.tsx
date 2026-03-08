@@ -4,6 +4,7 @@ import { useState } from "react";
 import { DragHandle } from "@tiptap/extension-drag-handle-react";
 import type { Editor } from "@tiptap/core";
 import type { Node } from "@tiptap/pm/model";
+import { setColumnDropDragContext } from "./column-drop-extension";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -117,6 +118,14 @@ export function BlockHandle({ editor }: BlockHandleProps) {
         setCurrentNode(node);
         setCurrentPos(pos);
       }}
+      onElementDragStart={() => {
+        if (currentNode && currentPos >= 0) {
+          setColumnDropDragContext({ pos: currentPos, node: currentNode });
+        }
+      }}
+      onElementDragEnd={() => {
+        setColumnDropDragContext(null);
+      }}
     >
       <div className="block-handle-buttons">
         <button
@@ -128,80 +137,91 @@ export function BlockHandle({ editor }: BlockHandleProps) {
           <Plus className="h-3.5 w-3.5" />
         </button>
 
-        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="block-handle-btn block-handle-grip"
-              title="Drag to move / Click for options"
-            >
-              <GripVertical className="h-3.5 w-3.5" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" side="right" sideOffset={8}>
-            <DropdownMenuItem onClick={handleDelete}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDuplicate}>
-              <Copy className="mr-2 h-4 w-4" />
-              Duplicate
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <Type className="mr-2 h-4 w-4" />
-                Turn into
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuItem onClick={() => turnInto("paragraph")}>
+        <div className="relative">
+          {/* Grip button - onClick for menu, drag handled by DragHandle ancestor */}
+          <button
+            type="button"
+            className="block-handle-btn block-handle-grip"
+            onClick={() => setMenuOpen(true)}
+            title="Drag to move / Click for options"
+          >
+            <GripVertical className="h-3.5 w-3.5" />
+          </button>
+
+          {/* Hidden trigger for DropdownMenu positioning - pointer-events:none
+              so it doesn't intercept pointerdown and block drag behavior */}
+          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+            <DropdownMenuTrigger
+              className="absolute inset-0 h-full w-full opacity-0"
+              style={{ pointerEvents: "none" }}
+              tabIndex={-1}
+              aria-hidden="true"
+            />
+            <DropdownMenuContent align="start" side="right" sideOffset={8}>
+              <DropdownMenuItem onClick={handleDelete}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleDuplicate}>
+                <Copy className="mr-2 h-4 w-4" />
+                Duplicate
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
                   <Type className="mr-2 h-4 w-4" />
-                  Text
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => turnInto("heading", { level: 1 })}
-                >
-                  <Heading1 className="mr-2 h-4 w-4" />
-                  Heading 1
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => turnInto("heading", { level: 2 })}
-                >
-                  <Heading2 className="mr-2 h-4 w-4" />
-                  Heading 2
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => turnInto("heading", { level: 3 })}
-                >
-                  <Heading3 className="mr-2 h-4 w-4" />
-                  Heading 3
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => turnInto("bulletList")}>
-                  <List className="mr-2 h-4 w-4" />
-                  Bullet List
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => turnInto("orderedList")}>
-                  <ListOrdered className="mr-2 h-4 w-4" />
-                  Numbered List
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => turnInto("blockquote")}>
-                  <Quote className="mr-2 h-4 w-4" />
-                  Quote
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => turnInto("codeBlock")}>
-                  <Code className="mr-2 h-4 w-4" />
-                  Code Block
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => turnInto("callout")}>
-                  <Info className="mr-2 h-4 w-4" />
-                  Callout
-                </DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          </DropdownMenuContent>
-        </DropdownMenu>
+                  Turn into
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={() => turnInto("paragraph")}>
+                    <Type className="mr-2 h-4 w-4" />
+                    Text
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => turnInto("heading", { level: 1 })}
+                  >
+                    <Heading1 className="mr-2 h-4 w-4" />
+                    Heading 1
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => turnInto("heading", { level: 2 })}
+                  >
+                    <Heading2 className="mr-2 h-4 w-4" />
+                    Heading 2
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => turnInto("heading", { level: 3 })}
+                  >
+                    <Heading3 className="mr-2 h-4 w-4" />
+                    Heading 3
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => turnInto("bulletList")}>
+                    <List className="mr-2 h-4 w-4" />
+                    Bullet List
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => turnInto("orderedList")}>
+                    <ListOrdered className="mr-2 h-4 w-4" />
+                    Numbered List
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => turnInto("blockquote")}>
+                    <Quote className="mr-2 h-4 w-4" />
+                    Quote
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => turnInto("codeBlock")}>
+                    <Code className="mr-2 h-4 w-4" />
+                    Code Block
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => turnInto("callout")}>
+                    <Info className="mr-2 h-4 w-4" />
+                    Callout
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </DragHandle>
   );

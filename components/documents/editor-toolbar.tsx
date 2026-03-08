@@ -290,8 +290,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         size="sm"
         pressed={false}
         onPressedChange={() => {
-          const url = window.prompt("Image URL");
-          if (url) editor.chain().focus().setImage({ src: url }).run();
+          editor.chain().focus().insertContent({ type: "imageBlock" }).run();
         }}
         aria-label="Image"
       >
@@ -318,12 +317,12 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         <Table className="h-4 w-4" />
       </Toggle>
 
-      {/* Background Highlight Color */}
+      {/* Block Background Color */}
       <Popover open={bgColorOpen} onOpenChange={setBgColorOpen}>
         <PopoverTrigger asChild>
           <Toggle
             size="sm"
-            pressed={editor.isActive("highlight")}
+            pressed={!!editor.getAttributes("paragraph").backgroundColor || !!editor.getAttributes("heading").backgroundColor}
             onPressedChange={() => setBgColorOpen(!bgColorOpen)}
             aria-label="Background color"
           >
@@ -339,15 +338,14 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
                 title={hc.name}
                 onClick={() => {
                   if (hc.color) {
-                    const color = isDark && "dark" in hc ? hc.dark : hc.color;
-                    editor.chain().focus().toggleHighlight({ color }).run();
+                    editor.chain().focus().setBlockBackground(hc.name.toLowerCase()).run();
                   } else {
-                    editor.chain().focus().unsetHighlight().run();
+                    editor.chain().focus().setBlockBackground(null).run();
                   }
                   setBgColorOpen(false);
                 }}
                 className="flex h-7 w-7 items-center justify-center rounded-md border transition-colors hover:scale-110"
-                style={{ backgroundColor: hc.color || undefined }}
+                style={{ backgroundColor: (isDark && "dark" in hc ? hc.dark : hc.color) || undefined }}
               >
                 {!hc.color && (
                   <span className="text-xs text-muted-foreground">A</span>
